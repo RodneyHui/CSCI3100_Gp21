@@ -1,0 +1,59 @@
+#Internal Messages: Editors and Creators are not fully implemented, also check ToDo by ctrl+F
+# All print functions are just temporary, need to be modified after implementing User Interface
+
+from datetime import datetime as dt
+
+class Task:
+    def __init__(self, Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo):
+        self.title = Title
+        self.Status = Status
+        self.PersonInCharge = PersonInCharge
+        self.CreationDate = dt.now()
+        self.DueDate = DueDate
+        self.Creator = Creator
+        self.Editors = []
+        self.AdditionalInfo = AdditionalInfo
+
+    def __str__(self):
+        return f"Task: {self.title}, Status: {self.Status}, Assigned to: {self.PersonInCharge}, CreationTime: {self.CreationDate}, Due: {self.DueDate}, Created by: {self.Creator}, Editors: {self.Editors}, Additional Info: {self.AdditionalInfo}"
+
+class KanbanBoard:
+    def __init__(self):
+        self.tasks = []
+
+    def AddTask(self, Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo):
+        self.tasks.append(Task(Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo))
+        print(f"Added: {Title}")
+
+    def EditTask(self, index, NewTitle=None, NewStatus=None, NewPersonInCharge=None, NewDueDate=None, NewAdditionalInfo=None):
+        try:
+            task = self.tasks[index]
+            if NewTitle:
+                task.title = NewTitle
+            if NewStatus:
+                task.Status = NewStatus
+            if NewPersonInCharge:
+                task.PersonInCharge = NewPersonInCharge
+            if NewDueDate:
+                task.DueDate = NewDueDate
+            if NewAdditionalInfo:
+                task.AdditionalInfo = NewAdditionalInfo
+            
+            # Track who edited the task (ToDo)
+            # task.Editors.append("Edited by user (placeholder)")
+
+            print(f"Task updated: {task.title}")
+        except IndexError:
+            print("Task not found.")
+
+    def DelTask(self, index):
+        try:
+            removed_task = self.tasks.pop(index)
+            print(f"Deleted: {removed_task.title}")
+        except IndexError:
+            print("Task not found.")
+
+    def DisplayBoard(self):
+        print("\nKanban Board:")
+        for idx, task in enumerate(self.tasks):
+            print(f"{idx + 1}: {task}")
