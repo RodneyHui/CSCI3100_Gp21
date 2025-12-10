@@ -76,7 +76,7 @@ def interactive_menu(store: str):
 
         elif choice == "4":
             #Edit task
-            DisplayTaskID = int(input("Task ID: ").strip())
+            TaskID = int(input("Task ID: ").strip()) - 1
             Editor = input("Name of Editor: ").strip()
             Title = input("New title (blank to skip): ").strip() or None
             StatusInput = int(input("New status (1: To-Do 2: In Progress 3: Waiting Review 4: Finished Blank: Skip): ").strip()) or None
@@ -105,12 +105,11 @@ def interactive_menu(store: str):
             AdditionalInfo = input("New additional information (blank to skip): ").strip() or None
             
             #Increment TaskID to be more consistent to the display (ID displayed in List tasks: 1, actual internal ID: 0)
-            TaskID = DisplayTaskID + 1
             board.EditTask(TaskID, Editor, NewTitle=Title, NewStatus=Status, NewPersonInCharge=PersonInCharge, NewDueDate=DueDate, NewAdditionalInfo=AdditionalInfo)
 
         elif choice == "5":
             #Delete task
-            TaskID = int(input("Task ID: ").strip())
+            TaskID = int(input("Task ID: ").strip()) - 1
             Confirm = input(f"Confirm remove {TaskID}? (y/N): ").strip().lower()
             if Confirm == "y":
                 board.DelTask(TaskID)
@@ -118,8 +117,8 @@ def interactive_menu(store: str):
 
         elif choice == "6":
             #Show task
-            TaskID = int(input("Task ID: ").strip())
-            board.tasks[TaskID-1].DisplayTask()
+            TaskID = int(input("Task ID: ").strip()) - 1
+            board.tasks[TaskID].DisplayTask()
         
         elif choice == "7":
             #Advise
