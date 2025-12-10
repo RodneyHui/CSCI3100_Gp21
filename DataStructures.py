@@ -14,8 +14,17 @@ class Task:
         self.Editors = []
         self.AdditionalInfo = AdditionalInfo
 
+    # Format date to prevent showing microseconds
+    def FormatDate(self, date_obj):
+        if isinstance(date_obj, str):
+            return date_obj
+        return date_obj.strftime("%Y-%m-%d %H:%M:%S")
+    
     def __str__(self):
-        return f"Task: {self.title}, Status: {self.Status}, Assigned to: {self.PersonInCharge}, CreationTime: {self.CreationDate}, Due: {self.DueDate}, Created by: {self.Creator}, Editors: {self.Editors}, Additional Info: {self.AdditionalInfo}"
+        # Reformat CreationDate
+        CreationDateReformat = self.FormatDate(self.CreationDate)
+
+        return f"Task: {self.title}, Status: {self.Status}, Assigned to: {self.PersonInCharge}, CreationTime: {CreationDateReformat}, Due: {self.DueDate}, Created by: {self.Creator}, Editors: {self.Editors}, Additional Info: {self.AdditionalInfo}"
 
 class KanbanBoard:
     def __init__(self):
