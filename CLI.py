@@ -54,13 +54,17 @@ def interactive_menu(store: str):
 
         elif choice == "4":
             #Edit task
-            TaskID = int(input("Task ID: ").strip())
+            DisplayTaskID = int(input("Task ID: ").strip())
+            Editor = input("Name of Editor: ").strip()
             Title = input("New title (blank to skip): ").strip() or None
             Status = input("New status (blank to skip): ").strip() or None
             PersonInCharge = input("New person in charge (blank to skip): ").strip() or None
             DueDate = input("New due date (blank to skip): ").strip() or None
             AdditionalInfo = input("New additional information (blank to skip): ").strip() or None
-            board.EditTask(TaskID, NewTitle=Title, NewStatus=Status, NewPersonInCharge=PersonInCharge, NewDueDate=DueDate, NewAdditionalInfo=AdditionalInfo)
+            
+            #Increment TaskID to be more consistent to the display (ID displayed in List tasks: 1, actual internal ID: 0)
+            TaskID = DisplayTaskID + 1
+            board.EditTask(TaskID, Editor, NewTitle=Title, NewStatus=Status, NewPersonInCharge=PersonInCharge, NewDueDate=DueDate, NewAdditionalInfo=AdditionalInfo)
 
         elif choice == "5":
             #Delete task
@@ -81,7 +85,7 @@ def interactive_menu(store: str):
             print("Invalid choice. Please enter a number from the menu.")
 
 
-"""
+
 def main(argv=None):
         try:
             interactive_menu("~/.kanban/board.json")
@@ -92,4 +96,3 @@ def main(argv=None):
 if __name__ == "__main__":
     main()
 
-"""
