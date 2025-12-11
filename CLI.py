@@ -183,7 +183,7 @@ def interactive_menu(store: str):
             except(ValueError):
                 print("Please enter a valid number")
                 continue
-            Confirm = input(f"Confirm remove {TaskID}? (y/N): ").strip().lower()
+            Confirm = input(f"Confirm remove {TaskID + 1}? (y/N): ").strip().lower()
             if Confirm == "y":
                 board.DelTask(TaskID)
             else: print("Cancelled.")
