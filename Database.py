@@ -69,7 +69,7 @@ def ValidateLogin(PhoneNo: int, Password: str) -> dict | None:
     User = GetUserByPhone(PhoneNo)
     if not User:
         return None
-    if not User.get("IsActive", 1):
+    if not User.get("Activation status", 1):
         return None
     if not User.get("PasswordHash"):
         return None

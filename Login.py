@@ -1,5 +1,5 @@
 import Database
-# import CLI
+import CLI
 
 
 LOGIN_PAGE = """
@@ -36,8 +36,9 @@ def Login():
             User = Database.ValidateLogin(PhoneNo, Password)
             if User:
                 print(f"Login successfully.")
-                # CLI.interactive_menu("~/.kanban/board.json")
-                return
+                if User.get("Position") == "Admin":
+                    CLI.InteractiveMenuAdmin("~/.kanban/board.json")
+                else: CLI.interactive_menu("~/.kanban/board.json")
             else:
                 print("Invalid phone number or password, or your account is inactive.")
 

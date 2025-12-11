@@ -1,6 +1,6 @@
 import DataStructures
 from pathlib import Path
-import argparse
+import Database
 
 
 MENU_SCREENS = """
@@ -17,7 +17,21 @@ Choose an option by number:
   0) Exit
 """
 
+ADMIN_MENU_SCREENS = """
+Kanban - Administrative Menu
+Choose an option by number:
+  1) Update user activation status
+  2) Access Kanban system
+  h) Help
+  0) Exit
+"""
+
 HELP_TEXT = """
+Quick help:
+
+"""
+
+ADMIN_HELP_TEXT = """
 Quick help:
 
 """
@@ -33,7 +47,8 @@ def interactive_menu(store: str):
 
         if choice == "0":
             print("Logged out.")
-            return
+            break
+            # return
 
         elif choice == "1":
             #List tasks
@@ -195,6 +210,42 @@ def interactive_menu(store: str):
         else:
             print("Invalid choice. Please enter a number from the menu.")
 
+def InteractiveMenuAdmin(store: str):
+
+    while True:
+        print(ADMIN_MENU_SCREENS.strip())
+        choice = input("> ").strip()
+
+        if choice == "0":
+            print("Logged out.")
+            break
+            # return
+
+        elif choice == "1":
+            #Update user activation status
+            print("Please enter the phone number of the user.")
+            PhoneNo = int(input("Phone number: ").strip())
+            print("The information of the user is as follow:")
+            print(Database.GetUserByPhone(PhoneNo))
+            while True:
+                IsActive = int(input("Please set the activation status of the user (1 for active, 0 otherwise) :").strip())
+                if IsActive == 1 or IsActive == 0:
+                    break
+                print("Invalid input.")
+            Database.ChangeActivationStatus(PhoneNo, IsActive)
+            print("The information has been updated.")
+            print(Database.GetUserByPhone(PhoneNo))
+
+            
+        elif choice == "2":
+            #Access Kanban system
+            interactive_menu(store)
+
+        elif choice == "h":
+            print(ADMIN_HELP_TEXT.strip())
+
+        else:
+            print("Invalid choice. Please enter a number from the menu.")
 
 """
 def main(argv=None):
