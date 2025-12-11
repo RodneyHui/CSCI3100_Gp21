@@ -45,7 +45,11 @@ def Login():
             # Register
             PhoneNo = int(input("Phone number: ").strip())
             Name = input("Name: ").strip()
-            Position = input("Position: ").strip()
+            while True:
+                Position = input("Position (Admin / User): ").strip().capitalize()
+                if (Position == "Admin" or Position == "User"):
+                    break
+                else: print("Invalid position.")
             Password = PasswordInput()
             Database.CreateUser(PhoneNo, Name, Position, Password)
             print(Database.GetUserByPhone(PhoneNo))
