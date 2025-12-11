@@ -47,8 +47,12 @@ def CreateUser(PhoneNo: int, Name: str, Position: str, Password: str):
     PasswordHash = HashPassword(Password)
     Connection = sqlite3.connect(DB_PATH)
     try:
-        Connection.execute("INSERT INTO USER (PhoneNo, Name, Position, PasswordHash) VALUES (?, ?, ?, ?)", (PhoneNo, Name, Position, PasswordHash))
-        Connection.commit()
+        if Position == "Admin":
+            Connection.execute("INSERT INTO USER (PhoneNo, Name, Position, PasswordHash) VALUES (?, ?, ?, ?)", (PhoneNo, Name, Position, PasswordHash))
+            Connection.commit()
+        else:
+            Connection.execute("INSERT INTO USER (PhoneNo, Name, IsActive, Position, PasswordHash) VALUES (?, ?, ?, ?, ?)", (PhoneNo, Name, 0, Position, PasswordHash))
+            Connection.commit()
     except sqlite3.IntegrityError:
         raise ValueError("Phone number already exists")
     finally:
@@ -72,3 +76,8 @@ def ValidateLogin(PhoneNo: int, Password: str) -> dict | None:
     if VerifyPassword(Password, User["PasswordHash"]):
         return User
     return None
+
+def ChangeActivationStatus(PhoneNo: int, IsActive: int):
+    Connection = sqlite3.connect(DB_PATH)
+    Connection.execute("UPDATE USER SET IsActive = ? WHERE PhoneNo = ?", (IsActive, PhoneNo))
+    Connection.commit()

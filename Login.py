@@ -47,8 +47,13 @@ def Login():
             Name = input("Name: ").strip()
             while True:
                 Position = input("Position (Admin / User): ").strip().capitalize()
-                if (Position == "Admin" or Position == "User"):
+                if Position == "User":
                     break
+                elif Position == "Admin":
+                    ValidationKey = int(input("Validation key: ").strip())
+                    if ValidationKey == 3100:  
+                        break
+                    print("Validation key mismatch.")
                 else: print("Invalid position.")
             Password = PasswordInput()
             Database.CreateUser(PhoneNo, Name, Position, Password)
@@ -70,7 +75,7 @@ def PasswordInput():
         if len(pw1) < 8:
             print("Password too short (min 8 chars). Please try again.")
             continue
-        return pw1
+        return pw1    
 
 # """
 def main(argv=None):
