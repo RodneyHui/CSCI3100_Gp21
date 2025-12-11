@@ -35,7 +35,7 @@ def Login():
             Password = input("Password: ").strip()
             User = Database.ValidateLogin(PhoneNo, Password)
             if User:
-                print(f"Login successfully.")
+                print(f"\nLogin successfully.\n")
                 if User.get("Position") == "Admin":
                     CLI.InteractiveMenuAdmin("~/.kanban/board.json")
                 else: CLI.interactive_menu("~/.kanban/board.json")
@@ -58,7 +58,9 @@ def Login():
                 else: print("Invalid position.")
             Password = PasswordInput()
             Database.CreateUser(PhoneNo, Name, Position, Password)
+            print("\nYou have registered the following account:")
             print(Database.GetUserByPhone(PhoneNo))
+            print("")
 
         elif choice == "h":
             print(HELP_TEXT.strip())
