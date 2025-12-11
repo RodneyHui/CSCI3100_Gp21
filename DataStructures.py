@@ -1,14 +1,14 @@
-#Internal Messages: Editors and Creators are not fully implemented, also check ToDo by ctrl+F
-# All print functions are just temporary, need to be modified after implementing User Interface
-
 from datetime import datetime as dt
-
+import KanbanInfoDatabase as kdb
 class Task:
-    def __init__(self, Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo):
+    def __init__(self, Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo,  CreationDate = None):
         self.title = Title
         self.Status = Status
         self.PersonInCharge = PersonInCharge
-        self.CreationDate = dt.now()
+        if CreationDate == None:
+            self.CreationDate = dt.now()
+        else:
+            self.CreationDate = CreationDate
         self.DueDate = DueDate
         self.Creator = Creator
         self.Editors = []
@@ -36,11 +36,19 @@ class Task:
 class KanbanBoard:
     def __init__(self):
         self.tasks = []
+        kdb.InitDB()
+        DataCount = kdb.CountTasks()
+        for i in range(DataCount):
+            temp = kdb.GetTaskByID(i+1)
+            task = Task(temp[1], temp[2], temp[3], temp[5], temp[6], temp[8], temp[4])
+            self.tasks.append(task)
         self.ValidStatus = ["To-Do", "In Progress", "Waiting Review", "Finished"]
 
     def AddTask(self, Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo):
         if Status in self.ValidStatus:
-            self.tasks.append(Task(Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo))
+            task = Task(Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo)
+            self.tasks.append(task)
+            kdb.AddTask(Title, Status, PersonInCharge, task.CreationDate, DueDate, Creator, AdditionalInfo)
             print(f"Added: {Title}")
         else:
             print("Add Task Failed: Status is not valid")
@@ -63,7 +71,6 @@ class KanbanBoard:
                 task.DueDate = NewDueDate
             if NewAdditionalInfo:
                 task.AdditionalInfo = NewAdditionalInfo
-
             print(f"Task updated: {task.title}")
         except IndexError:
             print("Task not found.")
@@ -93,6 +100,6 @@ class KanbanBoard:
             if grouped_tasks[status]: 
                 print(f"\n{status.upper()}:")
                 for task in grouped_tasks[status]:
-                    print(f" - Task {self.tasks.index(task)}: {task.title} (Due: {task.DueDate}, Assigned to: {task.PersonInCharge})")
+                    print(f" - Task {self.tasks.index(task) + 1}: {task.title} (Due: {task.DueDate}, Assigned to: {task.PersonInCharge})")
 
         print("\n" + "-"*50)
