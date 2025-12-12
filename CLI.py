@@ -1,7 +1,7 @@
 import DataStructures
 from pathlib import Path
 import Database
-
+import KanbanInfoDatabase as kdb
 
 MENU_SCREENS = """
 Kanban - Main Menu
@@ -112,7 +112,7 @@ def interactive_menu(store: str):
         elif choice == "3":
             #Move task
             try:
-                TaskID = int(input("Task ID: ").strip()) - 1
+                TaskID = int(input("Task ID: ").strip())
             except(ValueError):
                 print("Please enter a valid number.")
                 continue
@@ -151,7 +151,7 @@ def interactive_menu(store: str):
         elif choice == "4":
             #Edit task
             try:
-                TaskID = int(input("Task ID: ").strip()) - 1
+                TaskID = int(input("Task ID: ").strip())
             except(ValueError):
                 print("Please enter a valid number.")
                 continue
@@ -200,18 +200,16 @@ def interactive_menu(store: str):
                     print("Invalid date format.")
                     continue
             AdditionalInfo = input("New additional information (blank to skip): ").strip() or None
-            
-            #Increment TaskID to be more consistent to the display (ID displayed in List tasks: 1, actual internal ID: 0)
             board.EditTask(TaskID, Editor, NewTitle=Title, NewStatus=Status, NewPersonInCharge=PersonInCharge, NewDueDate=DueDate, NewAdditionalInfo=AdditionalInfo)
 
         elif choice == "5":
             #Delete task
             try:
-              TaskID = int(input("Task ID: ").strip()) - 1
+              TaskID = int(input("Task ID: ").strip())
             except(ValueError):
                 print("Please enter a valid number")
                 continue
-            Confirm = input(f"Confirm remove {TaskID + 1}? (y/N): ").strip().lower()
+            Confirm = input(f"Confirm remove {TaskID}? (y/N): ").strip().lower()
             if Confirm == "y":
                 board.DelTask(TaskID)
             else: print("Cancelled.")
@@ -219,12 +217,14 @@ def interactive_menu(store: str):
         elif choice == "6":
             #Show task
             try:
-                TaskID = int(input("Task ID: ").strip()) - 1
+                TaskID = int(input("Task ID: ").strip())
             except(ValueError):
                 print("Please enter a valid number")
                 continue
             try:
-                board.tasks[TaskID].DisplayTask()
+                Temp = kdb.GetTaskByID(TaskID)
+                task = DataStructures.Task(Temp[1], Temp[2], Temp[3], Temp[5], Temp[6], Temp[8], Temp[4], Temp[7], Temp[0])
+                task.DisplayTask()
             except(IndexError):
                 print("Task not found.")
         
@@ -275,7 +275,7 @@ def InteractiveMenuAdmin(store: str):
         else:
             print("Invalid choice. Please enter a number from the menu.")
 
-
+"""
 def main(argv=None):
         try:
             interactive_menu("~/.kanban/board.json")
@@ -285,4 +285,4 @@ def main(argv=None):
 
 if __name__ == "__main__":
     main()
-
+"""
