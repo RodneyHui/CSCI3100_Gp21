@@ -60,38 +60,52 @@ def interactive_menu(store: str):
             if not Title:
                 print("Title cannot be empty.")
                 continue
-            try:
-                StatusInput = int(input("Status (1: To-Do 2: In Progress 3: Waiting Review 4: Finished): ").strip())
-                if StatusInput == 1:
-                    Status = "To-Do"
-                elif StatusInput == 2:
-                    Status = "In Progress"
-                elif StatusInput == 3:
-                    Status = "Waiting Review"
-                elif StatusInput == 4:
-                    Status = "Finished"
+            while True:
+                StatusInput = (input("New status (1: To-Do 2: In Progress 3: Waiting Review 4: Finished): ").strip()) or None
+                if not StatusInput:
+                    print("Status cannot be empty.")
                 else:
-                    print("Status is not valid")
-                    continue
-            except(ValueError):
-                print("Please enter a valid number.")
-                continue
+                    try:
+                        StatusInput = int(StatusInput)
+                        if StatusInput == 1:
+                            Status = "To-Do"
+                            break
+                        elif StatusInput == 2:
+                            Status = "In Progress"
+                            break
+                        elif StatusInput == 3:
+                            Status = "Waiting Review"
+                            break
+                        elif StatusInput == 4:
+                            Status = "Finished"
+                            break
+                        else:
+                            print("Status is not valid")
+                    except(ValueError):
+                        print("Please enter a valid number.")
             PersonInCharge = input("Person in charge: ").strip()
-            DueDateInput = input("Due date (YYYY-MM-DD): ").strip() 
-            if DueDateInput:
-                parts = DueDateInput.split("-")
-                if (len(parts) == 3 and
-                    parts[0].isdigit() and len(parts[0]) == 4 and  # Year
-                    parts[1].isdigit() and len(parts[1]) == 2 and  # Month
-                    parts[2].isdigit() and len(parts[2]) == 2):    # Day
-                    DueDate = DueDateInput
+            if not PersonInCharge:
+                PersonInCharge = "None"
+            while True:
+                DueDateInput = input("Due date (YYYY-MM-DD): ").strip()
+                if DueDateInput:
+                    parts = DueDateInput.split("-")
+                    if (len(parts) == 3 and
+                        parts[0].isdigit() and len(parts[0]) == 4 and  # Year
+                        parts[1].isdigit() and len(parts[1]) == 2 and  # Month
+                        parts[2].isdigit() and len(parts[2]) == 2):    # Day
+                        DueDate = DueDateInput
+                        break
+                    else:
+                        print("Invalid date format.")
                 else:
-                    print("Invalid date format.")
-                    continue
-            Creator = input("Creator: ").strip()
-            if not Creator or not str(Creator).strip():
+                    DueDate = "Undecided"
+                    break
+            while True:
+                Creator = input("Creator: ").strip()
+                if Creator:
+                    break
                 print("Creator cannot be empty.")
-                continue
             AdditionalInfo = input("Additional information: ").strip()
             board.AddTask(Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo)
 
@@ -102,61 +116,75 @@ def interactive_menu(store: str):
             except(ValueError):
                 print("Please enter a valid number.")
                 continue
-            Editor = input("Name of Editor: ").strip()
-            if not Editor or not str(Editor).strip():
+            while True:
+                Editor = input("Name of Editor: ").strip()
+                if Editor:
+                    break
                 print("Editor cannot be empty.")
-                continue
-            StatusInput = (input("New status (1: To-Do 2: In Progress 3: Waiting Review 4: Finished Blank: Cancel): ").strip()) or None
-            if StatusInput == None:
-                Status = None
-            else:
-                try:
-                    StatusInput = int(StatusInput)
-                    if StatusInput == 1:
-                        Status = "To-Do"
-                    elif StatusInput == 2:
-                        Status = "In Progress"
-                    elif StatusInput == 3:
-                        Status = "Waiting Review"
-                    elif StatusInput == 4:
-                        Status = "Finished"
-                    else:
-                        print("Status is not valid")
-                        continue
-                except(ValueError):
-                    print("Please enter a valid number.")
-                    continue
+            while True:
+                StatusInput = (input("New status (1: To-Do 2: In Progress 3: Waiting Review 4: Finished Blank: Cancel): ").strip()) or None
+                if not StatusInput:
+                    Status = None
+                    break
+                else:
+                    try:
+                        StatusInput = int(StatusInput)
+                        if StatusInput == 1:
+                            Status = "To-Do"
+                            break
+                        elif StatusInput == 2:
+                            Status = "In Progress"
+                            break
+                        elif StatusInput == 3:
+                            Status = "Waiting Review"
+                            break
+                        elif StatusInput == 4:
+                            Status = "Finished"
+                            break
+                        else:
+                            print("Status is not valid")
+                    except(ValueError):
+                        print("Please enter a valid number.")
+
             board.EditTask(TaskID, Editor, NewStatus=Status)
 
         elif choice == "4":
             #Edit task
-
-            TaskID = int(input("Task ID: ").strip()) - 1
-            Editor = input("Name of Editor: ").strip()
-            if not Editor or not str(Editor).strip():
-                print("Editor cannot be empty.")
+            try:
+                TaskID = int(input("Task ID: ").strip()) - 1
+            except(ValueError):
+                print("Please enter a valid number.")
                 continue
+            while True:
+                Editor = input("Name of Editor: ").strip()
+                if Editor:
+                    break
+                print("Editor cannot be empty.")
             Title = input("New title (blank to skip): ").strip() or None
-            StatusInput = (input("New status (1: To-Do 2: In Progress 3: Waiting Review 4: Finished Blank: Skip): ").strip()) or None
-            if StatusInput == None:
-                Status = None
-            else:
-                try:
-                    StatusInput = int(StatusInput)
-                    if StatusInput == 1:
-                        Status = "To-Do"
-                    elif StatusInput == 2:
-                        Status = "In Progress"
-                    elif StatusInput == 3:
-                        Status = "Waiting Review"
-                    elif StatusInput == 4:
-                        Status = "Finished"
-                    else:
-                        print("Status is not valid")
-                        continue
-                except(ValueError):
-                    print("Please enter a valid number.")
-                    continue
+            while True:
+                StatusInput = (input("New status (1: To-Do 2: In Progress 3: Waiting Review 4: Finished Blank: Skip): ").strip()) or None
+                if not StatusInput:
+                    Status = None
+                    break
+                else:
+                    try:
+                        StatusInput = int(StatusInput)
+                        if StatusInput == 1:
+                            Status = "To-Do"
+                            break
+                        elif StatusInput == 2:
+                            Status = "In Progress"
+                            break
+                        elif StatusInput == 3:
+                            Status = "Waiting Review"
+                            break
+                        elif StatusInput == 4:
+                            Status = "Finished"
+                            break
+                        else:
+                            print("Status is not valid")
+                    except(ValueError):
+                        print("Please enter a valid number.")
             PersonInCharge = input("New person in charge (blank to skip): ").strip() or None
             DueDateInput = input("New due date (YYYY-MM-DD) (blank to skip): ").strip() or None
             if DueDateInput == None:
@@ -247,7 +275,7 @@ def InteractiveMenuAdmin(store: str):
         else:
             print("Invalid choice. Please enter a number from the menu.")
 
-"""
+
 def main(argv=None):
         try:
             interactive_menu("~/.kanban/board.json")
@@ -257,4 +285,4 @@ def main(argv=None):
 
 if __name__ == "__main__":
     main()
-"""
+
