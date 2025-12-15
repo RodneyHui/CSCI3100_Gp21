@@ -102,15 +102,26 @@ def interactive_menu(store: str):
 
         elif choice == "5":
             #Delete task
-            #Todo: add ability to delete multiple tasks?
-            try:
-              TaskID = int(input("Task ID: ").strip())
-            except(ValueError):
-                print("Please enter a valid number")
-                continue
-            Confirm = input(f"Confirm remove {TaskID}? (y/N): ").strip().lower()
+            TaskIDInput = (input("Task ID(s) (comma-separated for multiple): ").strip())
+            IDList = [i.strip() for i in TaskIDInput.split(",")]
+            TaskIDs = []
+            for i in IDList:
+                try:
+                    if (i not in TaskIDs):
+                        TaskID = int(i)
+                        TaskIDs.append(i)
+                except(ValueError):
+                    print("Please enter a valid number")
+                    continue
+            if (len(TaskIDs) == 1):
+                ConfirmMessage = f"Confirm remove Task {TaskIDs[0]}? (y/N): "
+            else:
+                IDDisplay = ", ".join(map(str, TaskIDs))
+                ConfirmMessage = f"Confirm remove Tasks {IDDisplay}? (y/N): "
+            Confirm = input(ConfirmMessage).strip().lower()
             if Confirm == "y":
-                board.DelTask(TaskID)
+                for TaskID in TaskIDs:
+                    board.DelTask(TaskID)
             else: print("Cancelled.")
 
         elif choice == "6":
@@ -222,6 +233,7 @@ def HandleDueDateInput(Mandatory=True, DefaultResponse=None):
         elif not Mandatory:
             return DefaultResponse
 
+"""
 def main(argv=None):
         try:
             interactive_menu("~/.kanban/board.json")
@@ -231,4 +243,4 @@ def main(argv=None):
 
 if __name__ == "__main__":
     main()
-
+"""
