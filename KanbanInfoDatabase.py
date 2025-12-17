@@ -101,3 +101,21 @@ def GetTaskByPIC():
     Connection.close()
     print(Data)
     return [[Datum[0], Datum[1], Datum[2], Datum[3], Datum[4], Datum[5], Datum[6], Datum[7], Datum[8]] for Datum in Data]
+
+def CountTask():
+    Connection = sqlite3.connect(DB_PATH)
+    Statuses = ["To-Do", "In Progress", "Waiting Review", "Finished"]
+    data = []
+    for Status in Statuses:
+        query = Connection.execute("SELECT COUNT(*) FROM KANBAN WHERE Status = ?", (Status,))
+        count = query.fetchone()[0]
+        data.append(count)
+    Connection.close()
+    return data
+
+def CountTaskByPerson():
+    Connection = sqlite3.connect(DB_PATH)
+    query = Connection.execute("SELECT PersonInCharge, COUNT(*) FROM KANBAN GROUP BY PersonInCharge")
+    data = query.fetchall()
+    Connection.close()
+    return {person: count for person, count in data}
