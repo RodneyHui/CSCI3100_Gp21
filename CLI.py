@@ -70,6 +70,7 @@ def interactive_menu(store: str):
                 if kdb.CheckUserExist(PersonInCharge):
                     break
                 print("Person in charge does not exist.")
+            print(f"Pperson in charge: {kdb.GetUserByPhone(PersonInCharge)}")
             DueDate = HandleDueDateInput(DefaultResponse="Undecided", Mandatory=False)
             while True:
                 try:
@@ -80,6 +81,7 @@ def interactive_menu(store: str):
                 if kdb.CheckUserExist(Creator):
                     break
                 print("Creator does not exist.")
+            print(f"Creator: {kdb.GetUserByPhone(Creator)}")
             AdditionalInfo = input("Additional information: ").strip()
             board.AddTask(Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo)
 
@@ -91,6 +93,7 @@ def interactive_menu(store: str):
                 print("Please enter a valid number.")
                 continue
             Editor = HandleEditorInput(Mandatory=True)
+            print(f"Editor: {kdb.GetUserByPhone(Editor)}")
             Status = HandleStatusInput(AdditionalText=" Blank: Cancel", Mandatory=False)
 
             board.EditTask(TaskID, Editor, NewStatus=Status)
@@ -103,6 +106,7 @@ def interactive_menu(store: str):
                 print("Please enter a valid number.")
                 continue
             Editor = HandleEditorInput(Mandatory=True)
+            print(f"Editor: {kdb.GetUserByPhone(Editor)}")
             Title = input("New title (blank to skip): ").strip() or None
             Status = HandleStatusInput(AdditionalText=" Blank: Skip", Mandatory=False)
             while True:
@@ -205,9 +209,11 @@ def HandleEditorInput(Mandatory=True):
         Editor = input("Phone number of Editor: ").strip() or None
         if not Editor and Mandatory:
             print("Editor cannot be empty.")
+        elif not Mandatory:
+            break
         elif kdb.CheckUserExist(Editor):
             return Editor
-        else:    
+        else:
             print("Editor does not exist.")
 
 def HandleStatusInput(Mandatory=True, AdditionalText=""):
