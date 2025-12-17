@@ -1,6 +1,6 @@
 import Database
 import CLI
-
+import Notification
 
 LOGIN_PAGE = """
 Kanban System Login Page
@@ -20,7 +20,8 @@ Quick help:
 def Login():
 
     Database.InitDB()
-
+    printnoti = True
+    
     while True:
         print(LOGIN_PAGE.strip())
         choice = input("> ").strip()
@@ -37,8 +38,15 @@ def Login():
             if User:
                 print(f"\nLogin successfully.\n")
                 if User.get("Position") == "Admin":
+                    if printnoti:
+                        Notification.PrintNotification()
+                        printnoti = False
                     CLI.InteractiveMenuAdmin("~/.kanban/board.json")
-                else: CLI.interactive_menu("~/.kanban/board.json")
+                else: 
+                    if printnoti:
+                        Notification.PrintNotification()
+                        printnoti = False
+                    CLI.interactive_menu("~/.kanban/board.json")
             else:
                 print("Invalid phone number or password, or your account is inactive.")
 

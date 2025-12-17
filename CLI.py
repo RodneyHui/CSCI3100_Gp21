@@ -110,7 +110,13 @@ def interactive_menu(store: str):
             Title = input("New title (blank to skip): ").strip() or None
             Status = HandleStatusInput(AdditionalText=" Blank: Skip", Mandatory=False)
             while True:
-                PersonInCharge = int(input("Person in charge: ").strip())
+                try:
+                    PersonInCharge = int(input("Person in charge: ").strip()) or None
+                    if PersonInCharge is None:
+                        break
+                except(ValueError):
+                    print("Please enter a valid phone number.")
+                    continue 
                 if kdb.CheckUserExist(PersonInCharge):
                     break
                 print("Person in charge does not exist.")
