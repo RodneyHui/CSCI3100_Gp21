@@ -35,7 +35,12 @@ def UpcomingTask():
         Editor = Datum[7]
         AddtionalInfo = Datum[8]
 
-        DueDate = datetime.strptime(DueDateStr, "%Y-%m-%d")
+        if not isinstance(DueDateStr, str):
+            continue
+        try:
+            DueDate = datetime.strptime(DueDateStr.strip(), "%Y-%m-%d")
+        except (ValueError, TypeError):
+            continue
 
         if Now <= DueDate <= Threshold:
             TimeLeft = DueDate - Now
