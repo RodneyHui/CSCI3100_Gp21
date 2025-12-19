@@ -1,1 +1,104 @@
-...
+# tests/test_database.py
+import pytest
+import sqlite3
+import tempfile
+import os
+from pathlib import Path
+
+class TestDatabaseModule:
+    """
+    Comprehensive tests for the Database module that handles user authentication 
+    and user management functionality.
+    """
+    
+    @pytest.fixture
+    def temp_database(self):
+        """
+        Creates a temporary database file for testing.
+        This ensures each test runs with a clean database state.
+        """
+        # Create a temporary file that will be automatically cleaned up
+        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+            db_path = f.name
+        
+        # Set the global DB_PATH to our temporary file
+        import Database
+        original_db_path = Database.DB_PATH
+        Database.DB_PATH = Path(db_path)
+        
+        # Initialize the database with required tables
+        Database.InitDB()
+        
+        yield db_path  # This is where the test runs
+        
+        # Cleanup: restore original path and delete temporary file
+        Database.DB_PATH = original_db_path
+        if os.path.exists(db_path):
+            os.unlink(db_path)
+    
+    def test_password_hashing_creates_secure_hash(self):
+        """
+        Test that password hashing function properly hashes passwords 
+        using bcrypt algorithm. This is critical for security.
+        """
+        from Database import HashPassword, VerifyPassword
+        
+        # Test with a typical password
+        test_password = "MySecurePassword123"
+        hashed_password = HashPassword(test_password)
+        
+        # The hashed password should not be the same as plain text
+        assert hashed_password != test_password
+        assert isinstance(hashed_password, str)
+        assert len(hashed_password) > 0
+        
+        # Verify the password can be checked against the hash
+        assert VerifyPassword(test_password, hashed_password) is True
+        
+        # Wrong passwords should not verify
+        assert VerifyPassword("WrongPassword", hashed_password) is False
+    
+    def test_password_verification_handles_edge_cases(self):
+        """Test password verification with edge cases and invalid inputs."""
+        from Database import VerifyPassword
+        
+        # Test with empty strings
+        assert VerifyPassword("", "some_hash") is False
+        assert VerifyPassword("password", "") is False
+        
+        # Test with None values (should not crash)
+        assert VerifyPassword(None, "hash") is False
+        assert VerifyPassword("password", None) is False
+    
+    def test_user_creation_successfully_adds_new_user(self, temp_database):
+        """
+        Test that creating a user adds them to the database with correct 
+        default values and activation status.
+        """
+        import Database
+        
+        # Test data for a new user
+        test_phone = 12345678
+        test_name = "John Doe"
+        test_position = "Developer"
+        test_password = "securepassword123"
+        
+        # Create the user
+        Database.CreateUser(test_phone, test_name, test_position, test_password)
+        
+        # Verify the user exists in the database
+        user = Database.GetUserByPhone(test_phone)
+        
+        assert user is not None
+        assert user["Name"] == test_name
+        assert user["Position"] == test_position
+        assert user["Phone number"] == test_phone
+        
+        # Regular users should be inactive by default
+        assert user["Activation status"] == 0
+        
+        # Admin users should be active by default
+        Database.CreateUser(87654321, "Admin User", "Admin", "adminpass")
+        admin_user = Database.GetUserByPhone(87654321)
+        assert admin_user["Activation status"] == 1
+    
