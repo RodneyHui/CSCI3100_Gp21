@@ -42,7 +42,7 @@ def UpcomingTask():
         except (ValueError, TypeError):
             continue
 
-        if Now <= DueDate <= Threshold:
+        if Now.date() <= DueDate.date() <= Threshold.date():
             TimeLeft = DueDate - Now
             Days = TimeLeft.days
             Hours = int(TimeLeft.seconds // 3600)
