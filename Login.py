@@ -2,6 +2,7 @@ import Database
 import CLI
 import Notification
 import KanbanInfoDatabase as kdb
+import License
 
 LOGIN_PAGE = """
 Kanban System Login Page
@@ -102,15 +103,3 @@ def PasswordInput():
             print("Password too short (min 8 chars). Please try again.")
             continue
         return pw1    
-
-# """
-def main(argv=None):
-        try:
-            Login()
-        except KeyboardInterrupt:
-            print("\nBye.")
-        return
-
-if __name__ == "__main__":
-    main()
-# """
