@@ -214,9 +214,11 @@ def HandlePersonInChargeInput(Mandatory=True, DefaultResponse="Undecided"):
             if not PersonInCharge and not Mandatory:
                 PersonInCharge = DefaultResponse
                 return PersonInCharge
+            elif not PersonInCharge and Mandatory:
+                print("Person in charge cannot be empty.")
             else:
                 PersonInCharge = int(PersonInCharge)
-        except(ValueError):
+        except(ValueError, TypeError):
             print("Please enter a valid phone number.")
             continue
         if kdb.CheckUserExist(PersonInCharge):
@@ -237,7 +239,7 @@ def HandleCreatorInput(Mandatory=True, DefaultResponse="Unknown"):
                 continue
             else:
                 Creator = int(Creator)
-        except(ValueError):
+        except(ValueError, TypeError):
             print("Please enter a valid phone number.")
             continue
         if kdb.CheckUserExist(Creator):
@@ -257,7 +259,7 @@ def HandleEditorInput(Mandatory=True, DefaultResponse="Unknown"):
                 print("Editor cannot be empty.")
             else:
                 Editor = int(Editor)
-        except(ValueError):
+        except(ValueError, TypeError):
             print("Please enter a valid phone number.")
             continue
         if kdb.CheckUserExist(Editor):
