@@ -62,7 +62,7 @@ def interactive_menu(store: str):
                 print("Title cannot be empty.")
                 continue
             Status = HandleStatusInput(Mandatory=True)
-            PersonInCharge = HandlePersonInChargeInput(Mandatory=True, DefaultResponse="Undecided")
+            PersonInCharge = HandlePersonInChargeInput(Mandatory=False, DefaultResponse="Undecided")
             DueDate = HandleDueDateInput(DefaultResponse="Undecided", Mandatory=False)
             Creator = HandleCreatorInput(Mandatory=True, DefaultResponse="Unknown")
             AdditionalInfo = input("Additional information: ").strip()
@@ -151,9 +151,13 @@ def interactive_menu(store: str):
             if CountTask[0] <= 10 and CountTask[1] <= 10 and CountTask[2] <= 10:
                 print("No further advice for Task Status. Keep Going!")
             CountTaskByPerson = kdb.CountTaskByPerson()
-            OverLoadedPeople = [f"{key} ({value} Tasks)" for key, value in CountTaskByPerson.items() if value > 3]
-            ChillPeople = [f"{key} ({value} Task(s))" for key, value in CountTaskByPerson.items() if value < 3]
+            UnassignedCount = CountTaskByPerson.get("Unassigned", 0)
+            AssignedOnly = {k: v for k, v in CountTaskByPerson.items() if k != "Unassigned"}
+            OverLoadedPeople = [f"{key} ({value} Tasks)" for key, value in AssignedOnly.items() if value > 3]
+            ChillPeople = [f"{key} ({value} Task(s))" for key, value in AssignedOnly.items() if value < 3]
             print("-"*50)
+            if UnassignedCount > 0:
+                print(f"Attention: There are {UnassignedCount} unassigned task(s)! Please assign them to someone.")
             if OverLoadedPeople:
                 print(f"Attention: Too much work for {', '.join(OverLoadedPeople)}!\n           Try to re-distribute tasks!\n")
             else:
