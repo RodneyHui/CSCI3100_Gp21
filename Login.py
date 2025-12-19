@@ -33,7 +33,11 @@ def Login():
 
         elif choice == "1":
             # Login
-            PhoneNo = int(input("Phone number: ").strip())
+            try:
+                PhoneNo = int(input("Phone number: ").strip())
+            except (ValueError, TypeError):
+                print("Please enter a valid phone number")
+                continue
             Password = input("Password: ").strip()
             User = Database.ValidateLogin(PhoneNo, Password)
             if User:
@@ -53,20 +57,26 @@ def Login():
 
         elif choice == "2":
             # Register
-            while True:
+            try:
                 PhoneNo = int(input("Phone number: ").strip())
-                if not kdb.CheckUserExist(PhoneNo):
-                    break
-                else: print("Phone number already exist.")
+                if kdb.CheckUserExist(PhoneNo):
+                    print("Phone number already exists.")
+                    continue
+            except (ValueError, TypeError):
+                print("Please enter a valid phone number")
+                continue
             Name = input("Name: ").strip()
             while True:
                 Position = input("Position (Admin / User): ").strip().capitalize()
                 if Position == "User":
                     break
                 elif Position == "Admin":
-                    ValidationKey = int(input("Validation key: ").strip())
-                    if ValidationKey == 3100:  
-                        break
+                    try:
+                        ValidationKey = int(input("Validation key: ").strip())
+                        if ValidationKey == 3100:  
+                            break
+                    except (ValueError, TypeError):
+                        print("Invalid key")
                     print("Validation key mismatch.")
                 else: print("Invalid position.")
             Password = PasswordInput()
