@@ -118,4 +118,19 @@ def CountTaskByPerson():
     query = Connection.execute("SELECT PersonInCharge, COUNT(*) FROM KANBAN GROUP BY PersonInCharge")
     data = query.fetchall()
     Connection.close()
-    return {person: count for person, count in data}
+    result = {}
+    for person_phone, count in data:
+        if person_phone is None:
+            name = "Unassigned"
+        else:
+            try:
+                phone_int = int(person_phone)  
+                user_data = GetUserByPhone(phone_int)
+                if user_data and len(user_data) > 0:
+                    name = f"{user_data[0]} ({phone_int})" 
+                else:
+                    name = f"Unknown ({phone_int})"
+            except (ValueError, TypeError):
+                name = "Unassigned"
+        result[name] = count
+    return result
