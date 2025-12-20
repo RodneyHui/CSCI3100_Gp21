@@ -152,7 +152,7 @@ def interactive_menu(store: str):
                 print("No further advice for Task Status. Keep Going!")
             CountTaskByPerson = kdb.CountTaskByPerson()
             UnassignedCount = CountTaskByPerson.get("Unassigned", 0)
-            AssignedOnly = {key: value for key, value in CountTaskByPerson.items() if key != "Unassigned"a
+            AssignedOnly = {key: value for key, value in CountTaskByPerson.items() if key != "Unassigned"}
             OverLoadedPeople = [f"{key} ({value} Tasks)" for key, value in AssignedOnly.items() if value > 3]
             ChillPeople = [f"{key} ({value} Task(s))" for key, value in AssignedOnly.items() if value < 3]
             print("-"*50)
