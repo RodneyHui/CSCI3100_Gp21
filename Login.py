@@ -54,9 +54,9 @@ def Login():
                         printnoti = False
                     CLI.interactive_menu("~/.kanban/board.json")
             elif User == "Not activated":
-                print("Your account is inactive, please contact an admin.")
+                print("Account inactive, please contact an admin.")
             else:
-                print("Invalid phone number or password, or your account is inactive.")
+                print("Invalid phone number or password.")
 
         elif choice == "2":
             # Register

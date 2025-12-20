@@ -39,22 +39,24 @@ def UpcomingTask():
             continue
         try:
             DueDate = datetime.strptime(DueDateStr.strip(), "%Y-%m-%d")
+            DueDate = DueDate.replace(hour=23, minute=59, second=59, microsecond=999999)
         except (ValueError, TypeError):
             continue
-
         if Now.date() <= DueDate.date() <= Threshold.date():
             TimeLeft = DueDate - Now
+
             if TimeLeft < timedelta(0):
                 DueIn = "Overdue"
             else:
                 Days = TimeLeft.days
                 Hours = int(TimeLeft.seconds // 3600)
-                Minutes = int((TimeLeft.seconds % 3600) //60)
-            DueIn = f"{Days}d {Hours:02d}h {Minutes:02d}m"
+                Minutes = int((TimeLeft.seconds % 3600) // 60)
+                DueIn = f"{Days}d {Hours:02d}h {Minutes:02d}m"
+                if DueDate.date() == Now.date():
+                    DueIn = f"0d {Hours:02d}h {Minutes:02d}m"
             PersonInCharge = kdb.GetUserByPhone(PersonInCharge)
             Creator = kdb.GetUserByPhone(Creator)
             Editor = kdb.GetUserByPhone(Editor)
-
             Message = [
                 f"[Task due in {DueIn}]\n",
                 f"Task ID: {TaskID}\n",
