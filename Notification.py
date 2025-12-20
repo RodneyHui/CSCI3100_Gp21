@@ -20,10 +20,11 @@ def UpcomingTask():
         Connection.close()
     else:
         Connection.close()
-        return
+        return []
 
     Notifications = []
-    Notifications.append("\n" + "-"*50 +"\n")
+    Notifications.append("\n" + "-"*50 + "\n")
+
     for Datum in Data:
         TaskID = Datum[0]
         Title = Datum[1]
@@ -35,30 +36,35 @@ def UpcomingTask():
         Editor = Datum[7]
         AddtionalInfo = Datum[8]
 
-        if not isinstance(DueDateStr, str):
+        if not isinstance(DueDateStr, str) or not DueDateStr.strip():
             continue
         try:
-            DueDate = datetime.strptime(DueDateStr.strip(), "%Y-%m-%d")
-            DueDate = DueDate.replace(hour=23, minute=59, second=59, microsecond=999999)
+            DueDate_base = datetime.strptime(DueDateStr.strip(), "%Y-%m-%d")
+            DueDate = DueDate_base.replace(hour=23, minute=59, second=59, microsecond=999999)
         except (ValueError, TypeError):
             continue
-        if Now.date() <= DueDate.date() <= Threshold.date():
+        if DueDate.date() < Now.date() or (Now.date() <= DueDate.date() <= Threshold.date()):
             TimeLeft = DueDate - Now
-
             if TimeLeft < timedelta(0):
-                DueIn = "Overdue"
+                OverdueDelta = -TimeLeft  
+                Days = OverdueDelta.days
+                Hours = int(OverdueDelta.seconds // 3600)
+                Minutes = int((OverdueDelta.seconds % 3600) // 60)
+                DueIn = f"{Days}d {Hours:02d}h {Minutes:02d}m"
+                DueMessage = f"[Task overdue by {DueIn}]\n"
             else:
                 Days = TimeLeft.days
                 Hours = int(TimeLeft.seconds // 3600)
                 Minutes = int((TimeLeft.seconds % 3600) // 60)
                 DueIn = f"{Days}d {Hours:02d}h {Minutes:02d}m"
-                if DueDate.date() == Now.date():
+                if DueDate_base.date() == Now.date():
                     DueIn = f"0d {Hours:02d}h {Minutes:02d}m"
+                DueMessage = f"[Task due in {DueIn}]\n"
             PersonInCharge = kdb.GetUserByPhone(PersonInCharge)
             Creator = kdb.GetUserByPhone(Creator)
             Editor = kdb.GetUserByPhone(Editor)
             Message = [
-                f"[Task due in {DueIn}]\n",
+                f"{DueMessage}",
                 f"Task ID: {TaskID}\n",
                 f"Title: {Title}\n",
                 f"Status: {Status}\n",
@@ -70,7 +76,7 @@ def UpcomingTask():
                 f"Additional information: {AddtionalInfo}",
             ]
             Notifications.append("".join(Message))
-            Notifications.append("\n" + "-"*50 +"\n")
+            Notifications.append("\n" + "-"*50 + "\n")
     return Notifications
 
 def PrintNotification():
