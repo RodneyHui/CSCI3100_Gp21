@@ -65,7 +65,6 @@ class KanbanBoard:
                 print("Task not found.")
                 return False
             
-            # FIXED: Correct parameter order
             task = Task(
                 Temp[1],  # Title
                 Temp[2],  # Status
@@ -112,8 +111,7 @@ class KanbanBoard:
             if Temp is None:
                 print("Task not found.")
                 return False
-            
-            # FIXED: Correct parameter order
+    
             removed_task = Task(
                 Temp[1],  # Title
                 Temp[2],  # Status
