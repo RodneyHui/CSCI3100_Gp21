@@ -48,7 +48,7 @@ def UpcomingTask():
             Hours = int(TimeLeft.seconds // 3600)
             Minutes = int((TimeLeft.seconds % 3600) //60)
 
-            DueIn = f"{Days}d {Hours:02d}:{Minutes:02d}"
+            DueIn = f"{Days}d {Hours:02d}h {Minutes:02d}m"
             PersonInCharge = kdb.GetUserByPhone(PersonInCharge)
             Creator = kdb.GetUserByPhone(Creator)
             Editor = kdb.GetUserByPhone(Editor)
