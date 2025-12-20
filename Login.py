@@ -41,7 +41,7 @@ def Login():
                 continue
             Password = input("Password: ").strip()
             User = Database.ValidateLogin(PhoneNo, Password)
-            if User:
+            if User and User != "Not activated":
                 print(f"\nLogin successfully.\n")
                 if User.get("Position") == "Admin":
                     if printnoti:
@@ -53,6 +53,8 @@ def Login():
                         Notification.PrintNotification()
                         printnoti = False
                     CLI.interactive_menu("~/.kanban/board.json")
+            elif User == "Not activated":
+                print("Your account is inactive, please contact an admin.")
             else:
                 print("Invalid phone number or password, or your account is inactive.")
 
@@ -66,7 +68,11 @@ def Login():
             except (ValueError, TypeError):
                 print("Please enter a valid phone number")
                 continue
-            Name = input("Name: ").strip()
+            while True:
+                Name = input("Name: ").strip()
+                if Name != "Not activated":
+                    break
+                print("Invalid name.")
             while True:
                 Position = input("Position (Admin / User): ").strip().capitalize()
                 if Position == "User":
