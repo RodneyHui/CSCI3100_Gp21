@@ -58,6 +58,7 @@ def fixed_datetime():
     """Provide a fixed datetime for testing."""
     return datetime(2024, 1, 15, 12, 0, 0
 EOF
+5.
 # Create the test file
 cat > tests/unit/test_NAME.py << 'EOF'
 …(test code)
