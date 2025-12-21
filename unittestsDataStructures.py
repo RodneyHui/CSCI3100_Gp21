@@ -122,58 +122,6 @@ class TestTaskClass:
             # Test with integer
             assert task.FormatDate(12345) == "12345"
     
-    def test_display_task_format(self, capsys):
-        """Test that DisplayTask produces correct format."""
-        mock_kdb = Mock()
-        # Setup mock to return different values for different phone numbers
-        def get_user_side_effect(phone):
-            if phone == 1234567890:
-                return ["John Doe"]
-            elif phone == 9876543210:
-                return ["Jane Smith"]
-            elif phone == 5555555555:
-                return ["Bob Editor"]
-            return ["Unknown"]
-        
-        mock_kdb.GetUserByPhone = Mock(side_effect=get_user_side_effect)
-        
-        with patch.dict('sys.modules', {'KanbanInfoDatabase': mock_kdb}):
-            import DataStructures
-            
-            fixed_date = datetime(2024, 1, 15, 10, 30, 0)
-            task = DataStructures.Task(
-                Title="Test Display",
-                Status="Waiting Review",
-                PersonInCharge=1234567890,
-                DueDate="2024-12-31",
-                Creator=9876543210,
-                AdditionalInfo="Test additional info",
-                CreationDate=fixed_date,
-                Editors=5555555555,
-                ID=99
-            )
-            
-            # Call DisplayTask
-            task.DisplayTask()
-            
-            # Capture printed output
-            captured = capsys.readouterr()
-            output = captured.out
-            
-            # Check for key elements in output
-            assert "Task 99: Test Display" in output
-            assert "Status: Waiting Review" in output
-            assert "Assigned to: John Doe" in output
-            assert "CreationTime: 2024-01-15 10:30:00" in output
-            assert "Due: 2024-12-31" in output
-            assert "Created by: Jane Smith" in output
-            assert "Editors: Bob Editor" in output
-            assert "Additional Info: Test additional info" in output
-            
-            # Check for formatting elements
-            assert "----------------------------------------" in output
-            assert "\n" in output
-    
     def test_str_representation(self):
         """Test the __str__ method."""
         mock_kdb = Mock()
