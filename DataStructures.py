@@ -26,9 +26,9 @@ class Task:
         print("-"*50)
         
         # Handle None values safely
-        assigned_to = kdb.GetUserByPhone(self.PersonInCharge) if self.PersonInCharge else "Unassigned"
-        created_by = kdb.GetUserByPhone(self.Creator) if self.Creator else "Unknown"
-        editors = kdb.GetUserByPhone(self.Editors) if self.Editors else "None"
+        assigned_to = kdb.GetUserByPhone(self.PersonInCharge) if self.PersonInCharge is not None else "Unassigned"
+        created_by = kdb.GetUserByPhone(self.Creator) if self.Creator is not None else "Unknown"
+        editors = kdb.GetUserByPhone(self.Editors) if self.Editors is not None else "None"
         
         print(f"Status: {self.Status}")
         print(f"Assigned to: {assigned_to}")

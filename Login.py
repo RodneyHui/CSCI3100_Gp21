@@ -2,7 +2,6 @@ import Database
 import CLI
 import Notification
 import KanbanInfoDatabase as kdb
-import License
 
 LOGIN_PAGE = """
 Kanban System Login Page
@@ -18,6 +17,8 @@ Quick help:
 - Register: enter your phone, name, position, and a password (typed twice).
 - Log in: use your phone number and password.
 """
+
+VALIDATION_KEY = 3100
 
 def Login():
 
@@ -80,7 +81,7 @@ def Login():
                 elif Position == "Admin":
                     try:
                         ValidationKey = int(input("Validation key: ").strip())
-                        if ValidationKey == 3100:  
+                        if ValidationKey == VALIDATION_KEY:  
                             break
                     except (ValueError, TypeError):
                         print("Invalid key")
