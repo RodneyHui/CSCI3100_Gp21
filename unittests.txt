@@ -1,3 +1,5 @@
+# Create test for DataStructures
+cat > tests/unit/test_datastructures.py << 'EOF'
 import pytest
 from datetime import datetime
 import sys
@@ -178,3 +180,105 @@ class TestTaskClass:
             # Should not contain "ID: None" or "ID: "
             assert "ID:" not in result
             assert "Task: No ID Task" in result
+EOF
+
+
+
+
+# Create test for Database module
+cat > tests/unit/test_database.py << 'EOF'
+import pytest
+import sys
+import os
+import bcrypt
+
+sys.path.insert(0, os.path.abspath('.'))
+
+class TestDatabaseFunctions:
+    """Test the Database.py module functions."""
+    
+    def test_hash_password_creates_hash(self):
+        """Test that HashPassword creates a valid bcrypt hash."""
+        import Database
+        
+        password = "MySecurePassword123"
+        hashed = Database.HashPassword(password)
+        
+        # Should be a string
+        assert isinstance(hashed, str)
+        # Should not be the plain password
+        assert hashed != password
+        # Should be a valid bcrypt hash
+        assert bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+    
+    def test_hash_password_different_salts(self):
+        """Test that hashing the same password produces different hashes (due to different salts)."""
+        import Database
+        
+        password = "SamePassword"
+        hash1 = Database.HashPassword(password)
+        hash2 = Database.HashPassword(password)
+        
+        # Hashes should be different (different salts)
+        assert hash1 != hash2
+        # But both should verify correctly
+        assert bcrypt.checkpw(password.encode('utf-8'), hash1.encode('utf-8'))
+        assert bcrypt.checkpw(password.encode('utf-8'), hash2.encode('utf-8'))
+    
+    def test_verify_password_correct(self):
+        """Test VerifyPassword with correct password."""
+        import Database
+        
+        password = "testpassword123"
+        hashed = Database.HashPassword(password)
+        
+        result = Database.VerifyPassword(password, hashed)
+        assert result is True
+    
+    def test_verify_password_incorrect(self):
+        """Test VerifyPassword with incorrect password."""
+        import Database
+        
+        password = "correctpassword"
+        wrong_password = "wrongpassword"
+        hashed = Database.HashPassword(password)
+        
+        result = Database.VerifyPassword(wrong_password, hashed)
+        assert result is False
+    
+    def test_verify_password_invalid_hash(self):
+        """Test VerifyPassword with invalid hash format."""
+        import Database
+        
+        result = Database.VerifyPassword("password", "not-a-valid-hash")
+        # Should return False or not crash
+        assert result is False
+    
+    def test_display_data_conversion(self):
+        """Test DisplayData converts database row to dictionary."""
+        import Database
+        
+        # Sample database row
+        row = (1, 1234567890, "John Doe", 1, "Admin", "hashed_password")
+        
+        result = Database.DisplayData(row)
+        
+        assert isinstance(result, dict)
+        assert result["ID"] == 1
+        assert result["Phone number"] == 1234567890
+        assert result["Name"] == "John Doe"
+        assert result["Activation status"] == 1
+        assert result["Position"] == "Admin"
+        assert result["PasswordHash"] == "hashed_password"
+    
+    def test_display_data_none(self):
+        """Test DisplayData with None input."""
+        import Database
+        
+        result = Database.DisplayData(None)
+        assert result is None
+EOF
+
+
+
+
