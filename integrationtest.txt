@@ -1,0 +1,259 @@
+#Create tests/integration/test_database_operations.py
+cat > tests/integration/test_database_operations.py << 'EOF'
+"""
+Integration tests for Database.py with SQLite
+Tests: User table creation, user CRUD operations, password hashing, activation status
+"""
+import pytest
+import sys
+import os
+import bcrypt
+
+sys.path.insert(0, os.path.abspath('.'))
+
+class TestDatabaseOperationsIntegration:
+    """Integration tests for Database.py with actual SQLite database."""
+    
+    def test_user_table_creation(self, temp_db):
+        """Test that InitDB creates USER table with correct schema."""
+        import Database
+        
+        # Set temporary database path
+        original_path = Database.DB_PATH
+        Database.DB_PATH = temp_db
+        
+        try:
+            # Initialize database
+            Database.InitDB()
+            
+            # Connect to database and check table exists
+            conn = sqlite3.connect(temp_db)
+            cursor = conn.cursor()
+            
+            # Check USER table exists
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='USER'")
+            table_exists = cursor.fetchone()
+            assert table_exists is not None
+            assert table_exists[0] == 'USER'
+            
+            # Check columns
+            cursor.execute("PRAGMA table_info(USER)")
+            columns = cursor.fetchall()
+            column_names = [col[1] for col in columns]
+            
+            expected_columns = ['ID', 'PhoneNo', 'Name', 'IsActive', 'Position', 'PasswordHash']
+            for col in expected_columns:
+                assert col in column_names
+            
+            # Check constraints
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='USER'")
+            table_sql = cursor.fetchone()[0]
+            assert "PhoneNo INTEGER NOT NULL UNIQUE" in table_sql.upper()
+            assert "IsActive INTEGER NOT NULL DEFAULT 1" in table_sql.upper()
+            
+            conn.close()
+            
+        finally:
+            # Restore original path
+            Database.DB_PATH = original_path
+    
+    def test_user_creation_with_phone_uniqueness(self, setup_database_schema):
+        """Test user creation and phone number uniqueness constraint."""
+        temp_db, Database, kdb = setup_database_schema
+        
+        # Create first user - should succeed
+        Database.CreateUser(
+            PhoneNo=1234567890,
+            Name="Test User",
+            Position="User",
+            Password="testpassword123"
+        )
+        
+        # Verify user was created
+        user = Database.GetUserByPhone(1234567890)
+        assert user is not None
+        assert user["Name"] == "Test User"
+        assert user["Position"] == "User"
+        assert user["Activation status"] == 0  # User should be inactive by default
+        
+        # Try to create user with same phone number - should raise ValueError
+        with pytest.raises(ValueError, match="Phone number already exists"):
+            Database.CreateUser(
+                PhoneNo=1234567890,
+                Name="Duplicate User",
+                Position="User",
+                Password="anotherpass"
+            )
+    
+    def test_password_hashing_and_verification_flow(self, setup_database_schema):
+        """Test complete password hashing and verification flow."""
+        temp_db, Database, kdb = setup_database_schema
+        
+        # Create a user
+        test_password = "SecurePassword123!"
+        Database.CreateUser(
+            PhoneNo=9998887777,
+            Name="Password Test User",
+            Position="User",
+            Password=test_password
+        )
+        
+        # Get the user to see the hashed password
+        user = Database.GetUserByPhone(9998887777)
+        assert user is not None
+        hashed_password = user["PasswordHash"]
+        
+        # Verify the hash is not the plain password
+        assert hashed_password != test_password
+        
+        # Test validation with correct password
+        validation_result = Database.ValidateLogin(9998887777, test_password)
+        # Should return "Not activated" since user is inactive
+        assert validation_result == "Not activated"
+        
+        # Activate user
+        Database.ChangeActivationStatus(9998887777, 1)
+        
+        # Now validation should return user data
+        validation_result = Database.ValidateLogin(9998887777, test_password)
+        assert validation_result is not None
+        assert validation_result["Phone number"] == 9998887777
+        assert validation_result["Name"] == "Password Test User"
+        
+        # Test validation with wrong password
+        wrong_result = Database.ValidateLogin(9998887777, "WrongPassword")
+        assert wrong_result is None
+        
+        # Test validation with non-existent user
+        non_existent_result = Database.ValidateLogin(0000000000, "anypassword")
+        assert non_existent_result is None
+    
+    def test_user_activation_status_updates(self, setup_database_schema):
+        """Test activation status update operations."""
+        temp_db, Database, kdb = setup_database_schema
+        
+        # Create a user (inactive by default for non-admin)
+        Database.CreateUser(
+            PhoneNo=1112223333,
+            Name="Activation Test User",
+            Position="User",
+            Password="testpass"
+        )
+        
+        # Verify user is inactive
+        user = Database.GetUserByPhone(1112223333)
+        assert user["Activation status"] == 0
+        
+        # Try to login - should get "Not activated" message
+        login_result = Database.ValidateLogin(1112223333, "testpass")
+        assert login_result == "Not activated"
+        
+        # Activate user
+        Database.ChangeActivationStatus(1112223333, 1)
+        
+        # Verify activation
+        updated_user = Database.GetUserByPhone(1112223333)
+        assert updated_user["Activation status"] == 1
+        
+        # Now login should work
+        login_result = Database.ValidateLogin(1112223333, "testpass")
+        assert login_result is not None
+        assert login_result["Phone number"] == 1112223333
+        
+        # Deactivate user
+        Database.ChangeActivationStatus(1112223333, 0)
+        
+        # Verify deactivation
+        deactivated_user = Database.GetUserByPhone(1112223333)
+        assert deactivated_user["Activation status"] == 0
+        
+        # Login should fail again
+        login_result = Database.ValidateLogin(1112223333, "testpass")
+        assert login_result == "Not activated"
+    
+    def test_admin_creation_active_by_default(self, setup_database_schema):
+        """Test that admin users are created as active by default."""
+        temp_db, Database, kdb = setup_database_schema
+        
+        # Create admin user
+        Database.CreateUser(
+            PhoneNo=9999999999,
+            Name="Admin User",
+            Position="Admin",
+            Password="adminpass"
+        )
+        
+        # Admin should be active by default
+        admin_user = Database.GetUserByPhone(9999999999)
+        assert admin_user["Activation status"] == 1
+        
+        # Admin should be able to login immediately
+        login_result = Database.ValidateLogin(9999999999, "adminpass")
+        assert login_result is not None
+        assert login_result["Position"] == "Admin"
+    
+    def test_user_data_persistence(self, temp_db):
+        """Test that user data persists across database connections."""
+        import Database
+        
+        original_path = Database.DB_PATH
+        Database.DB_PATH = temp_db
+        
+        try:
+            # Initialize and create user
+            Database.InitDB()
+            Database.CreateUser(1231231234, "Persistent User", "User", "persistpass")
+            Database.ChangeActivationStatus(1231231234, 1)
+            
+            # Close connection (simulated by re-importing)
+            # Actually, each function opens/closes its own connection
+            
+            # Re-query user
+            user = Database.GetUserByPhone(1231231234)
+            assert user is not None
+            assert user["Name"] == "Persistent User"
+            
+            # Update user activation
+            Database.ChangeActivationStatus(1231231234, 0)
+            
+            # Verify update persisted
+            updated_user = Database.GetUserByPhone(1231231234)
+            assert updated_user["Activation status"] == 0
+            
+        finally:
+            Database.DB_PATH = original_path
+    
+    def test_multiple_user_operations(self, setup_database_schema):
+        """Test operations with multiple users."""
+        temp_db, Database, kdb = setup_database_schema
+        
+        # Create multiple users
+        users = [
+            (1111111111, "User One", "User", "pass1"),
+            (2222222222, "User Two", "User", "pass2"),
+            (3333333333, "User Three", "Manager", "pass3"),
+        ]
+        
+        for phone, name, position, password in users:
+            Database.CreateUser(phone, name, position, password)
+            Database.ChangeActivationStatus(phone, 1)
+        
+        # Verify all users exist
+        for phone, name, position, password in users:
+            user = Database.GetUserByPhone(phone)
+            assert user is not None
+            assert user["Name"] == name
+            assert user["Position"] == position
+            
+            # Should be able to login
+            login_result = Database.ValidateLogin(phone, password)
+            assert login_result is not None
+            assert login_result["Phone number"] == phone
+        
+        # Test getting non-existent user
+        non_existent = Database.GetUserByPhone(9999999999)
+        assert non_existent is None
+
+# Need to import sqlite3 for table inspection
+import sqlite3
+EOF
