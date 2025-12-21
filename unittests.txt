@@ -182,8 +182,7 @@ class TestTaskClass:
             assert "Task: No ID Task" in result
 EOF
 
-
-
+pytest tests/unit/test_datastructures.py -v
 
 # Create test for Database module
 cat > tests/unit/test_database.py << 'EOF'
@@ -279,6 +278,1028 @@ class TestDatabaseFunctions:
         assert result is None
 EOF
 
+pytest tests/unit/test_database.py -v
 
+# Create test file for License.py
+cat > tests/unit/test_license.py << 'EOF'
+import pytest
+import sys
+import os
+from unittest.mock import patch, mock_open, MagicMock
+from pathlib import Path
 
+# Add current directory to Python path
+sys.path.insert(0, os.path.abspath('.'))
 
+class TestLicenseFileOperations:
+    """Test file operations in License.py"""
+    
+    def test_load_license_keys_file_exists_with_keys(self, tmp_path):
+        """Test LoadLicenseKeys when file exists and has keys."""
+        # Create a temporary license file
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("# Comment line\n0000-1111-2222-3333\n\n1111-2222-3333-4444\n# Another comment")
+        
+        # Mock the LICENSE_FILE path
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            keys = License.LoadLicenseKeys()
+            
+            # Should return a list of keys (not None)
+            assert keys is not None
+            # Should have 2 valid keys
+            assert len(keys) == 2
+            # Should contain both keys
+            assert "0000-1111-2222-3333" in keys
+            assert "1111-2222-3333-4444" in keys
+            # Should not contain comments or empty lines
+            assert "# Comment line" not in keys
+            assert "" not in keys
+    
+    def test_load_license_keys_file_exists_empty(self, tmp_path):
+        """Test LoadLicenseKeys when file exists but is empty or only has comments."""
+        # Create empty license file
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("# Only comments\n\n  \n# More comments")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            keys = License.LoadLicenseKeys()
+            
+            # Should return empty list
+            assert keys == []
+    
+    def test_load_license_keys_file_not_exists(self, tmp_path):
+        """Test LoadLicenseKeys when file doesn't exist."""
+        # Create a non-existent file path
+        non_existent_file = tmp_path / "non_existent.txt"
+        
+        with patch('License.LICENSE_FILE', non_existent_file):
+            import License
+            
+            keys = License.LoadLicenseKeys()
+            
+            # Should return None when file doesn't exist
+            assert keys is None
+    
+    def test_load_license_keys_file_with_whitespace(self, tmp_path):
+        """Test LoadLicenseKeys handles whitespace correctly."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("  0000-1111-2222-3333  \n  1111-2222-3333-4444  \n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            keys = License.LoadLicenseKeys()
+            
+            # Should strip whitespace
+            assert "0000-1111-2222-3333" in keys
+            assert "1111-2222-3333-4444" in keys
+            # Should not have leading/trailing spaces
+            for key in keys:
+                assert key == key.strip()
+
+class TestLicenseValidationLogic:
+    """Test validation logic in License.py"""
+    
+    def test_validate_license_exact_match(self, tmp_path):
+        """Test ValidateLicense with exact key match."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("0000-1111-2222-3333\n1111-2222-3333-4444\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # Exact match should return True
+            result = License.ValidateLicense("0000-1111-2222-3333")
+            assert result is True
+            
+            result = License.ValidateLicense("1111-2222-3333-4444")
+            assert result is True
+    
+    def test_validate_license_invalid_key(self, tmp_path):
+        """Test ValidateLicense with invalid/non-existent key."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("0000-1111-2222-3333\n1111-2222-3333-4444\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # Invalid key should return False
+            result = License.ValidateLicense("9999-9999-9999-9999")
+            assert result is False
+            
+            # Similar but not exact match
+            result = License.ValidateLicense("0000-1111-2222-3334")
+            assert result is False
+    
+    def test_validate_license_none_input(self, tmp_path):
+        """Test ValidateLicense with None input."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("0000-1111-2222-3333\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # None input should return False
+            result = License.ValidateLicense(None)
+            assert result is False
+    
+    def test_validate_license_empty_string(self, tmp_path):
+        """Test ValidateLicense with empty string."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("0000-1111-2222-3333\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # Empty string should return False
+            result = License.ValidateLicense("")
+            assert result is False
+    
+    def test_validate_license_case_sensitive(self, tmp_path):
+        """Test ValidateLicense is case-sensitive."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("ABCD-EFGH-IJKL-MNOP\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # Should be case-sensitive
+            result = License.ValidateLicense("ABCD-EFGH-IJKL-MNOP")
+            assert result is True
+            
+            result = License.ValidateLicense("abcd-efgh-ijkl-mnop")
+            assert result is False
+
+class TestLicenseUserInteraction:
+    """Test user interaction in License.py"""
+    
+    @patch('builtins.input')
+    def test_license_input_success_first_try(self, mock_input, tmp_path):
+        """Test LicenseInput succeeds on first attempt."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("0000-1111-2222-3333\n1111-2222-3333-4444\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # Mock input to return valid key
+            mock_input.return_value = "0000-1111-2222-3333"
+            
+            result = License.LicenseInput()
+            
+            # Should return True
+            assert result is True
+            # Input should be called once
+            mock_input.assert_called_once_with("Enter license key: ")
+    
+    @patch('builtins.input')
+    def test_license_input_three_failures_then_success(self, mock_input, tmp_path):
+        """Test LicenseInput with failures then success."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("0000-1111-2222-3333\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # Mock input: two wrong keys, then correct key
+            mock_input.side_effect = ["wrong-key-1", "wrong-key-2", "0000-1111-2222-3333"]
+            
+            result = License.LicenseInput()
+            
+            # Should return True (succeeded on 3rd try)
+            assert result is True
+            # Input should be called 3 times
+            assert mock_input.call_count == 3
+    
+    @patch('builtins.input')
+    def test_license_input_three_failures_then_fail(self, mock_input, tmp_path):
+        """Test LicenseInput with 3 failures."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("0000-1111-2222-3333\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # Mock input: three wrong keys
+            mock_input.side_effect = ["wrong-key-1", "wrong-key-2", "wrong-key-3"]
+            
+            result = License.LicenseInput()
+            
+            # Should return False (all 3 attempts failed)
+            assert result is False
+            # Input should be called exactly 3 times
+            assert mock_input.call_count == 3
+    
+    @patch('builtins.input')
+    def test_license_input_eoferror_handling(self, mock_input, tmp_path):
+        """Test LicenseInput handles EOFError."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("0000-1111-2222-3333\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # Mock input to raise EOFError
+            mock_input.side_effect = EOFError()
+            
+            result = License.LicenseInput()
+            
+            # Should return empty string (as per code returning "")
+            assert result == ""
+            # Input should be called once
+            mock_input.assert_called_once()
+    
+    @patch('builtins.input')
+    def test_license_input_whitespace_handling(self, mock_input, tmp_path):
+        """Test LicenseInput handles whitespace in input."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("0000-1111-2222-3333\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # Mock input with whitespace
+            mock_input.return_value = "  0000-1111-2222-3333  "
+            
+            result = License.LicenseInput()
+            
+            # Should return True (whitespace should be stripped)
+            assert result is True
+    
+    @patch('builtins.print')
+    @patch('builtins.input')
+    def test_license_input_error_messages(self, mock_input, mock_print, tmp_path, capsys):
+        """Test LicenseInput displays correct error messages."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("0000-1111-2222-3333\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # Mock input: one wrong, then correct
+            mock_input.side_effect = ["wrong-key", "0000-1111-2222-3333"]
+            
+            result = License.LicenseInput()
+            
+            # Check error message was printed
+            output = capsys.readouterr().out
+            assert "Invalid license key. Please try again." in output
+            assert "License verified." in output
+
+# Test integration between functions
+class TestLicenseIntegration:
+    """Test integration between License.py functions."""
+    
+    @patch('builtins.input')
+    def test_full_license_flow(self, mock_input, tmp_path):
+        """Test complete license flow."""
+        license_file = tmp_path / "license_keys.txt"
+        license_file.write_text("0000-1111-2222-3333\n1111-2222-3333-4444\n")
+        
+        with patch('License.LICENSE_FILE', license_file):
+            import License
+            
+            # Test 1: Direct validation
+            assert License.ValidateLicense("0000-1111-2222-3333") is True
+            assert License.ValidateLicense("9999-9999-9999-9999") is False
+            
+            # Test 2: Load keys
+            keys = License.LoadLicenseKeys()
+            assert keys is not None
+            assert len(keys) == 2
+            
+            # Test 3: User input flow
+            mock_input.return_value = "0000-1111-2222-3333"
+            assert License.LicenseInput() is True
+EOF
+
+pytest tests/unit/test_license.py -v
+
+# Create test file for Notification.py
+cat > tests/unit/test_notification.py << 'EOF'
+import pytest
+import sys
+import os
+from datetime import datetime, timedelta
+from unittest.mock import patch, MagicMock, call
+
+# Add current directory to Python path
+sys.path.insert(0, os.path.abspath('.'))
+
+class TestNotificationDateLogic:
+    """Test date logic in Notification.py"""
+    
+    def test_upcoming_task_detection_14_days(self):
+        """Test detection of tasks due within 14 days."""
+        with patch('Notification.datetime') as mock_dt, \
+             patch('Notification.sqlite3') as mock_sqlite3, \
+             patch('Notification.kdb') as mock_kdb:
+            
+            # Mock current date
+            mock_now = datetime(2024, 1, 15, 12, 0, 0)
+            mock_dt.now.return_value = mock_now
+            mock_dt.timedelta = timedelta
+            
+            # Mock database connection and query
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_sqlite3.connect.return_value = mock_conn
+            mock_conn.execute.return_value = mock_cursor
+            
+            # Mock that KANBAN table exists
+            mock_cursor.fetchone.return_value = ('KANBAN',)  # Table exists
+            
+            # Create test data for tasks
+            test_tasks = [
+                (1, "Task due in 5 days", "To-Do", 1234567890, "2024-01-15 10:00:00", "2024-01-20", 9876543210, None, "Info"),  # 5 days future
+                (2, "Task due in 13 days", "In Progress", 1234567890, "2024-01-15 10:00:00", "2024-01-28", 9876543210, None, "Info"),  # 13 days future
+                (3, "Task due in 15 days", "Waiting Review", 1234567890, "2024-01-15 10:00:00", "2024-01-30", 9876543210, None, "Info"),  # 15 days future (should not appear)
+                (4, "Overdue task", "To-Do", 1234567890, "2024-01-01 10:00:00", "2024-01-10", 9876543210, None, "Info"),  # Overdue by 5 days
+            ]
+            mock_cursor.fetchall.return_value = test_tasks
+            
+            # Mock user lookup
+            mock_kdb.GetUserByPhone.return_value = ["Test User"]
+            
+            import Notification
+            
+            notifications = Notification.UpcomingTask()
+            
+            # Should return notifications (not None)
+            assert notifications is not None
+            # Should have 3 tasks (two upcoming within 14 days, one overdue)
+            # Each task generates: separator + message + separator
+            # So 3 tasks = 3*(separator + message + separator) but implementation might be different
+            
+            # Check that correct tasks are included
+            notifications_str = "".join(notifications)
+            assert "Task due in 5 days" in notifications_str
+            assert "Task due in 13 days" in notifications_str
+            assert "Task due in 15 days" not in notifications_str  # Should not be included
+            assert "Overdue task" in notifications_str
+            
+            # Check time calculations
+            assert "[Task due in" in notifications_str or "[Task overdue by" in notifications_str
+    
+    def test_overdue_task_detection(self):
+        """Test detection of overdue tasks."""
+        with patch('Notification.datetime') as mock_dt, \
+             patch('Notification.sqlite3') as mock_sqlite3, \
+             patch('Notification.kdb') as mock_kdb:
+            
+            # Mock current date
+            mock_now = datetime(2024, 1, 15, 12, 0, 0)
+            mock_dt.now.return_value = mock_now
+            mock_dt.timedelta = timedelta
+            
+            # Mock database
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_sqlite3.connect.return_value = mock_conn
+            mock_conn.execute.return_value = mock_cursor
+            mock_cursor.fetchone.return_value = ('KANBAN',)
+            
+            # Create overdue task (5 days ago)
+            test_tasks = [
+                (1, "Overdue Task", "To-Do", 1234567890, "2024-01-01 10:00:00", "2024-01-10", 9876543210, None, "Info"),
+            ]
+            mock_cursor.fetchall.return_value = test_tasks
+            
+            mock_kdb.GetUserByPhone.return_value = ["Test User"]
+            
+            import Notification
+            
+            notifications = Notification.UpcomingTask()
+            notifications_str = "".join(notifications)
+            
+            # Should show as overdue
+            assert "[Task overdue by" in notifications_str
+            assert "Overdue Task" in notifications_str
+            # Should show 5 days overdue (from 2024-01-10 to 2024-01-15)
+            assert "5d" in notifications_str
+    
+    def test_time_delta_formatting(self):
+        """Test time delta formatting in days, hours, minutes."""
+        with patch('Notification.datetime') as mock_dt, \
+             patch('Notification.sqlite3') as mock_sqlite3, \
+             patch('Notification.kdb') as mock_kdb:
+            
+            # Mock current date/time
+            mock_now = datetime(2024, 1, 15, 12, 0, 0)  # Noon on Jan 15
+            mock_dt.now.return_value = mock_now
+            mock_dt.timedelta = timedelta
+            
+            # Mock database
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_sqlite3.connect.return_value = mock_conn
+            mock_conn.execute.return_value = mock_cursor
+            mock_cursor.fetchone.return_value = ('KANBAN',)
+            
+            # Task due in 2 days, 3 hours, 45 minutes
+            # Due date: Jan 17, 15:45
+            test_tasks = [
+                (1, "Formatted Time Task", "To-Do", 1234567890, "2024-01-15 10:00:00", "2024-01-17 15:45:00", 9876543210, None, "Info"),
+            ]
+            mock_cursor.fetchall.return_value = test_tasks
+            
+            mock_kdb.GetUserByPhone.return_value = ["Test User"]
+            
+            import Notification
+            
+            notifications = Notification.UpcomingTask()
+            notifications_str = "".join(notifications)
+            
+            # Should show formatted time
+            # Note: The exact formatting depends on implementation
+            # Common patterns: "2d 03h 45m" or similar
+            assert "Task due in" in notifications_str
+            # Check for time components
+            assert "d" in notifications_str  # days
+            assert "h" in notifications_str  # hours
+            assert "m" in notifications_str  # minutes
+    
+    def test_due_today_task(self):
+        """Test task due today."""
+        with patch('Notification.datetime') as mock_dt, \
+             patch('Notification.sqlite3') as mock_sqlite3, \
+             patch('Notification.kdb') as mock_kdb:
+            
+            # Mock current date/time: Jan 15, 12:00
+            mock_now = datetime(2024, 1, 15, 12, 0, 0)
+            mock_dt.now.return_value = mock_now
+            mock_dt.timedelta = timedelta
+            
+            # Mock database
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_sqlite3.connect.return_value = mock_conn
+            mock_conn.execute.return_value = mock_cursor
+            mock_cursor.fetchone.return_value = ('KANBAN',)
+            
+            # Task due today at 18:00 (6 hours from now)
+            test_tasks = [
+                (1, "Due Today Task", "To-Do", 1234567890, "2024-01-15 10:00:00", "2024-01-15 18:00:00", 9876543210, None, "Info"),
+            ]
+            mock_cursor.fetchall.return_value = test_tasks
+            
+            mock_kdb.GetUserByPhone.return_value = ["Test User"]
+            
+            import Notification
+            
+            notifications = Notification.UpcomingTask()
+            notifications_str = "".join(notifications)
+            
+            # Task due today should be included
+            assert "Due Today Task" in notifications_str
+            # Should show 0 days, 6 hours
+            assert "0d" in notifications_str or "6h" in notifications_str
+    
+    def test_no_kanban_table(self):
+        """Test when KANBAN table doesn't exist."""
+        with patch('Notification.datetime') as mock_dt, \
+             patch('Notification.sqlite3') as mock_sqlite3:
+            
+            mock_now = datetime(2024, 1, 15, 12, 0, 0)
+            mock_dt.now.return_value = mock_now
+            
+            # Mock database connection
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_sqlite3.connect.return_value = mock_conn
+            mock_conn.execute.return_value = mock_cursor
+            
+            # Mock that KANBAN table doesn't exist
+            mock_cursor.fetchone.return_value = None
+            
+            import Notification
+            
+            notifications = Notification.UpcomingTask()
+            
+            # Should return empty list when table doesn't exist
+            assert notifications == []
+    
+    def test_invalid_date_format_handling(self):
+        """Test handling of invalid date formats."""
+        with patch('Notification.datetime') as mock_dt, \
+             patch('Notification.sqlite3') as mock_sqlite3, \
+             patch('Notification.kdb') as mock_kdb:
+            
+            mock_now = datetime(2024, 1, 15, 12, 0, 0)
+            mock_dt.now.return_value = mock_now
+            mock_dt.datetime.strptime.side_effect = datetime.strptime
+            
+            # Mock database
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_sqlite3.connect.return_value = mock_conn
+            mock_conn.execute.return_value = mock_cursor
+            mock_cursor.fetchone.return_value = ('KANBAN',)
+            
+            # Task with invalid date format
+            test_tasks = [
+                (1, "Invalid Date Task", "To-Do", 1234567890, "2024-01-15 10:00:00", "not-a-date", 9876543210, None, "Info"),
+                (2, "Valid Date Task", "To-Do", 1234567890, "2024-01-15 10:00:00", "2024-01-20", 9876543210, None, "Info"),
+            ]
+            mock_cursor.fetchall.return_value = test_tasks
+            
+            import Notification
+            
+            notifications = Notification.UpcomingTask()
+            notifications_str = "".join(notifications)
+            
+            # Should skip invalid date task, include valid date task
+            assert "Invalid Date Task" not in notifications_str
+            assert "Valid Date Task" in notifications_str
+    
+    def test_empty_due_date_handling(self):
+        """Test handling of empty or None due dates."""
+        with patch('Notification.datetime') as mock_dt, \
+             patch('Notification.sqlite3') as mock_sqlite3, \
+             patch('Notification.kdb') as mock_kdb:
+            
+            mock_now = datetime(2024, 1, 15, 12, 0, 0)
+            mock_dt.now.return_value = mock_now
+            
+            # Mock database
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_sqlite3.connect.return_value = mock_conn
+            mock_conn.execute.return_value = mock_cursor
+            mock_cursor.fetchone.return_value = ('KANBAN',)
+            
+            # Task with empty due date
+            test_tasks = [
+                (1, "Empty Date Task", "To-Do", 1234567890, "2024-01-15 10:00:00", "", 9876543210, None, "Info"),
+                (2, "Whitespace Date Task", "To-Do", 1234567890, "2024-01-15 10:00:00", "   ", 9876543210, None, "Info"),
+            ]
+            mock_cursor.fetchall.return_value = test_tasks
+            
+            import Notification
+            
+            notifications = Notification.UpcomingTask()
+            
+            # Should skip tasks with empty/whitespace due dates
+            notifications_str = "".join(notifications)
+            assert "Empty Date Task" not in notifications_str
+            assert "Whitespace Date Task" not in notifications_str
+
+class TestPrintNotification:
+    """Test PrintNotification function."""
+    
+    @patch('builtins.print')
+    def test_print_notification_with_tasks(self, mock_print):
+        """Test PrintNotification with tasks."""
+        with patch('Notification.UpcomingTask') as mock_upcoming:
+            # Mock returning notifications
+            mock_upcoming.return_value = [
+                "\n" + "-"*50 + "\n",
+                "[Task due in 2d 06h 30m]\nTask details...\n",
+                "\n" + "-"*50 + "\n"
+            ]
+            
+            import Notification
+            
+            Notification.PrintNotification()
+            
+            # Should call print for each notification line
+            assert mock_print.call_count >= 3
+    
+    @patch('builtins.print')
+    def test_print_notification_none(self, mock_print):
+        """Test PrintNotification when UpcomingTask returns None."""
+        with patch('Notification.UpcomingTask') as mock_upcoming:
+            mock_upcoming.return_value = None
+            
+            import Notification
+            
+            Notification.PrintNotification()
+            
+            # Should not print anything
+            mock_print.assert_not_called()
+    
+    @patch('builtins.print')
+    def test_print_notification_empty(self, mock_print):
+        """Test PrintNotification with empty notifications."""
+        with patch('Notification.UpcomingTask') as mock_upcoming:
+            mock_upcoming.return_value = []
+            
+            import Notification
+            
+            Notification.PrintNotification()
+            
+            # Should still print (but might print nothing or just separators)
+            # At minimum, it won't crash
+
+# Test the Due constant
+def test_due_constant():
+    """Test that Due constant is set correctly."""
+    import Notification
+    # Should be 14 as per the image
+    assert Notification.Due == 14
+EOF
+
+pytest tests/unit/test_notification.py -v
+
+# Create test file for CLI.py
+cat > tests/unit/test_cli.py << 'EOF'
+import pytest
+import sys
+import os
+from datetime import datetime, date
+from unittest.mock import patch, MagicMock, call
+
+# Add current directory to Python path
+sys.path.insert(0, os.path.abspath('.'))
+
+class TestHandleStatusInput:
+    """Test HandleStatusInput function."""
+    
+    @patch('builtins.input')
+    def test_handle_status_input_conversion_valid(self, mock_input):
+        """Test status input conversion (1->To-Do, 2->In Progress, etc.)."""
+        import CLI
+        
+        test_cases = [
+            ("1", "To-Do"),
+            ("2", "In Progress"),
+            ("3", "Waiting Review"),
+            ("4", "Finished"),
+        ]
+        
+        for input_val, expected in test_cases:
+            mock_input.return_value = input_val
+            
+            result = CLI.HandleStatusInput(Mandatory=True)
+            
+            assert result == expected, f"Input {input_val} should return {expected}"
+    
+    @patch('builtins.input')
+    def test_handle_status_input_invalid_then_valid(self, mock_input):
+        """Test invalid input then valid input."""
+        import CLI
+        
+        # First invalid, then valid
+        mock_input.side_effect = ["5", "2"]  # 5 is invalid, 2 is valid
+        
+        result = CLI.HandleStatusInput(Mandatory=True)
+        
+        # Should return "In Progress" (from input "2")
+        assert result == "In Progress"
+        # Should be called twice
+        assert mock_input.call_count == 2
+    
+    @patch('builtins.input')
+    def test_handle_status_input_non_numeric(self, mock_input):
+        """Test non-numeric input."""
+        import CLI
+        
+        mock_input.side_effect = ["abc", "3"]
+        
+        result = CLI.HandleStatusInput(Mandatory=True)
+        
+        assert result == "Waiting Review"  # From input "3"
+        assert mock_input.call_count == 2
+    
+    @patch('builtins.input')
+    def test_handle_status_input_empty_not_mandatory(self, mock_input):
+        """Test empty input when not mandatory."""
+        import CLI
+        
+        mock_input.return_value = ""
+        
+        result = CLI.HandleStatusInput(Mandatory=False)
+        
+        # Should return None when not mandatory and empty
+        assert result is None
+    
+    @patch('builtins.input')
+    def test_handle_status_input_empty_mandatory(self, mock_input):
+        """Test empty input when mandatory."""
+        import CLI
+        
+        mock_input.side_effect = ["", "1"]  # Empty, then valid
+        
+        result = CLI.HandleStatusInput(Mandatory=True)
+        
+        assert result == "To-Do"  # From input "1"
+        assert mock_input.call_count == 2
+    
+    @patch('builtins.input')
+    def test_handle_status_input_additional_text(self, mock_input, capsys):
+        """Test status input with additional text in prompt."""
+        import CLI
+        
+        mock_input.return_value = "2"
+        
+        result = CLI.HandleStatusInput(Mandatory=True, AdditionalText="Blank: Cancel")
+        
+        # Should work correctly
+        assert result == "In Progress"
+        
+        # Check that additional text appears in prompt
+        output = capsys.readouterr().out
+        # The prompt should contain the additional text
+        # Note: This might not capture the input prompt, but we can verify the function works
+
+class TestHandleDueDateInput:
+    """Test HandleDueDateInput function."""
+    
+    @patch('builtins.input')
+    def test_handle_due_date_input_validation_valid(self, mock_input):
+        """Test due date input validation with valid date."""
+        import CLI
+        
+        # Mock today's date
+        with patch('CLI.datetime') as mock_dt:
+            mock_today = date(2024, 1, 15)
+            mock_dt.today.return_value.date.return_value = mock_today
+            mock_dt.datetime.strptime.side_effect = datetime.strptime
+            
+            # Future date
+            mock_input.return_value = "2024-01-20"
+            
+            result = CLI.HandleDueDateInput(Mandatory=True)
+            
+            assert result == "2024-01-20"
+    
+    @patch('builtins.input')
+    def test_handle_due_date_input_past_date(self, mock_input):
+        """Test due date input with past date."""
+        import CLI
+        
+        with patch('CLI.datetime') as mock_dt:
+            mock_today = date(2024, 1, 15)
+            mock_dt.today.return_value.date.return_value = mock_today
+            mock_dt.datetime.strptime.side_effect = datetime.strptime
+            
+            # Past date, then future date
+            mock_input.side_effect = ["2024-01-10", "2024-01-20"]
+            
+            result = CLI.HandleDueDateInput(Mandatory=True)
+            
+            assert result == "2024-01-20"  # Should accept the future date
+            assert mock_input.call_count == 2
+    
+    @patch('builtins.input')
+    def test_handle_due_date_input_invalid_format(self, mock_input):
+        """Test due date input with invalid format."""
+        import CLI
+        
+        with patch('CLI.datetime') as mock_dt:
+            mock_today = date(2024, 1, 15)
+            mock_dt.today.return_value.date.return_value = mock_today
+            
+            # Invalid format, then valid
+            mock_input.side_effect = ["01-20-2024", "2024-01-20"]
+            
+            result = CLI.HandleDueDateInput(Mandatory=True)
+            
+            assert result == "2024-01-20"
+            assert mock_input.call_count == 2
+    
+    @patch('builtins.input')
+    def test_handle_due_date_input_empty_not_mandatory(self, mock_input):
+        """Test empty due date when not mandatory."""
+        import CLI
+        
+        mock_input.return_value = ""
+        
+        result = CLI.HandleDueDateInput(Mandatory=False, DefaultResponse="Undecided")
+        
+        assert result == "Undecided"
+    
+    @patch('builtins.input')
+    def test_handle_due_date_input_todays_date(self, mock_input):
+        """Test due date with today's date (should be accepted)."""
+        import CLI
+        
+        with patch('CLI.datetime') as mock_dt:
+            mock_today = date(2024, 1, 15)
+            mock_dt.today.return_value.date.return_value = mock_today
+            mock_dt.datetime.strptime.side_effect = datetime.strptime
+            
+            mock_input.return_value = "2024-01-15"  # Today's date
+            
+            result = CLI.HandleDueDateInput(Mandatory=True)
+            
+            assert result == "2024-01-15"  # Should accept today's date
+
+class TestHandleUserInputFunctions:
+    """Test HandlePersonInChargeInput, HandleCreatorInput, HandleEditorInput."""
+    
+    @patch('builtins.input')
+    def test_handle_person_in_charge_input_user_exists(self, mock_input):
+        """Test person in charge input with existing user."""
+        import CLI
+        
+        with patch('CLI.kdb') as mock_kdb:
+            # Mock user exists
+            mock_kdb.CheckUserExist.return_value = True
+            mock_kdb.GetUserByPhone.return_value = ["John Doe"]
+            
+            mock_input.return_value = "1234567890"
+            
+            result = CLI.HandlePersonInChargeInput(Mandatory=True)
+            
+            assert result == 1234567890
+            mock_kdb.CheckUserExist.assert_called_with(1234567890)
+    
+    @patch('builtins.input')
+    def test_handle_person_in_charge_input_user_not_exists(self, mock_input):
+        """Test person in charge input with non-existent user."""
+        import CLI
+        
+        with patch('CLI.kdb') as mock_kdb:
+            # Mock user doesn't exist, then exists
+            mock_kdb.CheckUserExist.side_effect = [False, True]
+            mock_kdb.GetUserByPhone.return_value = ["John Doe"]
+            
+            mock_input.side_effect = ["1111111111", "1234567890"]
+            
+            result = CLI.HandlePersonInChargeInput(Mandatory=True)
+            
+            assert result == 1234567890
+            assert mock_input.call_count == 2
+            assert mock_kdb.CheckUserExist.call_count == 2
+    
+    @patch('builtins.input')
+    def test_handle_person_in_charge_input_empty_not_mandatory(self, mock_input):
+        """Test empty person in charge when not mandatory."""
+        import CLI
+        
+        mock_input.return_value = ""
+        
+        result = CLI.HandlePersonInChargeInput(Mandatory=False, DefaultResponse="Undecided")
+        
+        assert result == "Undecided"
+    
+    @patch('builtins.input')
+    def test_handle_person_in_charge_input_invalid_number(self, mock_input):
+        """Test invalid phone number input."""
+        import CLI
+        
+        with patch('CLI.kdb') as mock_kdb:
+            mock_kdb.CheckUserExist.return_value = True
+            mock_kdb.GetUserByPhone.return_value = ["John Doe"]
+            
+            # Non-numeric, then valid
+            mock_input.side_effect = ["not-a-number", "1234567890"]
+            
+            result = CLI.HandlePersonInChargeInput(Mandatory=True)
+            
+            assert result == 1234567890
+            assert mock_input.call_count == 2
+    
+    @patch('builtins.input')
+    def test_handle_creator_input_similar(self, mock_input):
+        """Test HandleCreatorInput (similar to person in charge)."""
+        import CLI
+        
+        with patch('CLI.kdb') as mock_kdb:
+            mock_kdb.CheckUserExist.return_value = True
+            mock_kdb.GetUserByPhone.return_value = ["Jane Smith"]
+            
+            mock_input.return_value = "9876543210"
+            
+            result = CLI.HandleCreatorInput(Mandatory=True)
+            
+            assert result == 9876543210
+    
+    @patch('builtins.input')
+    def test_handle_editor_input_similar(self, mock_input):
+        """Test HandleEditorInput (similar to other user inputs)."""
+        import CLI
+        
+        with patch('CLI.kdb') as mock_kdb:
+            mock_kdb.CheckUserExist.return_value = True
+            mock_kdb.GetUserByPhone.return_value = ["Editor Name"]
+            
+            mock_input.return_value = "5555555555"
+            
+            result = CLI.HandleEditorInput(Mandatory=True)
+            
+            assert result == 5555555555
+
+class TestMandatoryOptionalHandling:
+    """Test mandatory vs optional field handling."""
+    
+    @patch('builtins.input')
+    def test_mandatory_field_empty_retry(self, mock_input):
+        """Test that mandatory fields retry on empty input."""
+        import CLI
+        
+        # Test with HandlePersonInChargeInput
+        with patch('CLI.kdb') as mock_kdb:
+            mock_kdb.CheckUserExist.return_value = True
+            mock_kdb.GetUserByPhone.return_value = ["Test User"]
+            
+            # Empty, then valid
+            mock_input.side_effect = ["", "1234567890"]
+            
+            result = CLI.HandlePersonInChargeInput(Mandatory=True)
+            
+            assert result == 1234567890
+            assert mock_input.call_count == 2
+    
+    @patch('builtins.input')
+    def test_optional_field_empty_returns_default(self, mock_input):
+        """Test that optional fields return default when empty."""
+        import CLI
+        
+        # Test with HandlePersonInChargeInput
+        mock_input.return_value = ""
+        
+        result = CLI.HandlePersonInChargeInput(Mandatory=False, DefaultResponse="Undecided")
+        
+        assert result == "Undecided"
+        # Should not check user existence for empty optional field
+        # (The mock would fail if it tried)
+    
+    @patch('builtins.input')
+    def test_status_input_mandatory_vs_optional(self, mock_input):
+        """Test status input mandatory vs optional behavior."""
+        import CLI
+        
+        # Test optional with empty
+        mock_input.return_value = ""
+        result = CLI.HandleStatusInput(Mandatory=False)
+        assert result is None
+        
+        # Test mandatory with empty then valid
+        mock_input.side_effect = ["", "1"]
+        result = CLI.HandleStatusInput(Mandatory=True)
+        assert result == "To-Do"
+    
+    @patch('builtins.input')
+    def test_due_date_input_mandatory_vs_optional(self, mock_input):
+        """Test due date input mandatory vs optional behavior."""
+        import CLI
+        
+        with patch('CLI.datetime') as mock_dt:
+            mock_today = date(2024, 1, 15)
+            mock_dt.today.return_value.date.return_value = mock_today
+            
+            # Test optional with empty
+            mock_input.return_value = ""
+            result = CLI.HandleDueDateInput(Mandatory=False, DefaultResponse="No date")
+            assert result == "No date"
+            
+            # Reset mock
+            mock_input.reset_mock()
+            
+            # Test mandatory with valid date
+            mock_input.return_value = "2024-01-20"
+            mock_dt.datetime.strptime.side_effect = datetime.strptime
+            result = CLI.HandleDueDateInput(Mandatory=True)
+            assert result == "2024-01-20"
+
+# Integration test for all input handlers
+class TestCLIIntegration:
+    """Integration tests for CLI input handlers."""
+    
+    @patch('builtins.input')
+    def test_complete_user_input_flow(self, mock_input):
+        """Test a complete user input flow."""
+        import CLI
+        
+        with patch('CLI.kdb') as mock_kdb, \
+             patch('CLI.datetime') as mock_dt:
+            
+            # Setup mocks
+            mock_kdb.CheckUserExist.return_value = True
+            mock_kdb.GetUserByPhone.return_value = ["Test User"]
+            mock_today = date(2024, 1, 15)
+            mock_dt.today.return_value.date.return_value = mock_today
+            mock_dt.datetime.strptime.side_effect = datetime.strptime
+            
+            # Simulate input sequence for creating a task
+            input_sequence = [
+                "1234567890",  # Person in charge
+                "9876543210",  # Creator
+                "5555555555",  # Editor
+                "2",  # Status: In Progress
+                "2024-01-20",  # Due date
+            ]
+            mock_input.side_effect = input_sequence
+            
+            # Test all handlers
+            person = CLI.HandlePersonInChargeInput(Mandatory=True)
+            creator = CLI.HandleCreatorInput(Mandatory=True)
+            editor = CLI.HandleEditorInput(Mandatory=True)
+            status = CLI.HandleStatusInput(Mandatory=True)
+            due_date = CLI.HandleDueDateInput(Mandatory=True)
+            
+            # Verify all results
+            assert person == 1234567890
+            assert creator == 9876543210
+            assert editor == 5555555555
+            assert status == "In Progress"
+            assert due_date == "2024-01-20"
+EOF
+
+pytest tests/unit/test_cli.py -v
