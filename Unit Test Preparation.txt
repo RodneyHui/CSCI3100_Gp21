@@ -59,7 +59,10 @@ def fixed_datetime():
     return datetime(2024, 1, 15, 12, 0, 0
 EOF
 5.
-# Create the test file
+# Create the test file and name the test
 cat > tests/unit/test_NAME.py << 'EOF'
 …(test code)
 EOF
+6.
+# Run the test that you named 
+pytest tests/unit/test_NAME.py -v
