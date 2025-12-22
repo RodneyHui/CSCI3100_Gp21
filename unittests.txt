@@ -6,7 +6,7 @@ touch tests/unit/__init__.py
 touch tests/integration/__init__.py 
 touch tests/system/__init__.py 
 touch tests/conftest.py
-3.
+
 # Create pytest.ini configuration
 cat > pytest.ini << 'EOF'
 [pytest]
@@ -14,7 +14,47 @@ testpaths = tests
 python_files = test_*.py
 python_classes = Test*
 python_functions = test_*
-addopts = -v -
+addopts = -v --tb=short
+markers =
+    unit: Unit tests
+    integration: Integration tests
+    system: System tests
+    slow: Slow tests
+EOF
+
+# Create conftest.py with shared fixtures
+cat > tests/conftest.py << 'EOF'
+import pytest
+import tempfile
+import os
+from datetime import datetime
+from unittest.mock import patch
+
+@pytest.fixture
+def temp_db():
+    """Create a temporary database for testing."""
+    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+        db_path = f.name
+    yield db_path
+    # Cleanup
+    if os.path.exists(db_path):
+        os.unlink(db_path)
+
+@pytest.fixture
+def sample_license_file():
+    """Create temporary license file with test keys."""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        f.write("0000-1111-2222-3333\n1111-2222-3333-4444\n")
+        license_path = f.name
+    yield license_path
+    if os.path.exists(license_path):
+        os.unlink(license_path)
+
+@pytest.fixture
+def fixed_datetime():
+    """Provide a fixed datetime for testing."""
+    return datetime(2024, 1, 15, 12, 0, 0
+EOF
 
 
 # Create test for DataStructures
