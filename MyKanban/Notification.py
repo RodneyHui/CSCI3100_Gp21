@@ -34,7 +34,9 @@ def UpcomingTask():
         Creator = Datum[6]
         Editor = Datum[7]
         AddtionalInfo = Datum[8]
-
+        
+        if Status.strip().lower() == "finished":
+            continue
         if not isinstance(DueDateStr, str) or not DueDateStr.strip():
             continue
         try:
