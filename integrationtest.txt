@@ -515,4 +515,728 @@ EOF
 
 pytest tests/integration/test_task_management.py -v
 
+cat > tests/integration/test_business_logic_data_layer.py << 'EOF'
+"""
+Integration tests for DataStructures.py with KanbanInfoDatabase.py
+Tests: KanbanBoard methods calling kdb functions, task object creation from database rows,
+       status validation during task operations
+"""
+import pytest
+import sys
+import os
+from datetime import datetime
+import sqlite3
 
+sys.path.insert(0, os.path.abspath('.'))
+
+class TestBusinessLogicDataLayerIntegration:
+    """Integration tests for DataStructures.py with KanbanInfoDatabase.py."""
+    
+    def test_kanbanboard_methods_calling_kdb_functions(self, sample_tasks):
+        """Test that KanbanBoard methods properly call kdb functions."""
+        temp_db, Database, kdb = sample_tasks
+        
+        # Import DataStructures
+        import DataStructures
+        
+        # Create KanbanBoard instance
+        # Note: KanbanBoard constructor calls kdb.InitDB()
+        # We'll patch it to avoid reinitializing
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(kdb, 'InitDB', lambda: None)
+            
+            board = DataStructures.KanbanBoard()
+            
+            # Test AddTask calls kdb.AddTask
+            with pytest.MonkeyPatch.context() as mp2:
+                add_task_called = []
+                def mock_add_task(*args, **kwargs):
+                    add_task_called.append((args, kwargs))
+                    return None
+                
+                mp2.setattr(kdb, 'AddTask', mock_add_task)
+                
+                # Add a task
+                result = board.AddTask(
+                    Title="Integration Test Task",
+                    Status="To-Do",
+                    PersonInCharge=9876543210,
+                    DueDate="2024-12-31",
+                    Creator=1234567890,
+                    AdditionalInfo="Integration test"
+                )
+                
+                assert result is True
+                assert len(add_task_called) == 1
+                
+                # Verify parameters passed to kdb.AddTask
+                args, kwargs = add_task_called[0]
+                assert len(args) == 7
+                assert args[0] == "Integration Test Task"  # Title
+                assert args[1] == "To-Do"  # Status
+    
+    def test_task_object_creation_from_database_rows(self, sample_tasks):
+        """Test creating Task objects from database rows."""
+        temp_db, Database, kdb = sample_tasks
+        
+        # Import DataStructures
+        import DataStructures
+        
+        # Get a task from database
+        all_tasks = kdb.GetAllTasks()
+        assert len(all_tasks) > 0
+        
+        # Create a Task object from the first database row
+        db_task = all_tasks[0]
+        
+        # The database row format: [ID, Title, Status, PersonInCharge, CreationDate, 
+        #                           DueDate, Creator, Editors, AdditionalInfo]
+        task_obj = DataStructures.Task(
+            Title=db_task[1],
+            Status=db_task[2],
+            PersonInCharge=db_task[3],
+            DueDate=db_task[5],
+            Creator=db_task[6],
+            AdditionalInfo=db_task[8],
+            CreationDate=db_task[4],
+            Editors=db_task[7],
+            ID=db_task[0]
+        )
+        
+        # Verify the Task object has correct data
+        assert task_obj.title == db_task[1]
+        assert task_obj.Status == db_task[2]
+        assert task_obj.PersonInCharge == db_task[3]
+        assert task_obj.DueDate == db_task[5]
+        assert task_obj.Creator == db_task[6]
+        assert task_obj.AdditionalInfo == db_task[8]
+        assert task_obj.Editors == db_task[7]
+        assert task_obj.ID == db_task[0]
+        
+        # Test DisplayTask doesn't crash
+        # This will call kdb.GetUserByPhone
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(kdb, 'GetUserByPhone', lambda phone: ["Test User"])
+            
+            # Capture output to verify it runs without error
+            import io
+            import sys
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            
+            try:
+                task_obj.DisplayTask()
+                output = sys.stdout.getvalue()
+                assert "Task" in output
+                assert task_obj.title in output
+            finally:
+                sys.stdout = old_stdout
+        
+        # Test __str__ method
+        task_str = str(task_obj)
+        assert isinstance(task_str, str)
+        assert task_obj.title in task_str
+        assert task_obj.Status in task_str
+    
+    def test_status_validation_during_task_operations(self, sample_tasks):
+        """Test status validation in KanbanBoard operations."""
+        temp_db, Database, kdb = sample_tasks
+        
+        import DataStructures
+        
+        # Create KanbanBoard
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(kdb, 'InitDB', lambda: None)
+            board = DataStructures.KanbanBoard()
+            
+            # Test AddTask with valid status
+            with pytest.MonkeyPatch.context() as mp2:
+                add_task_called = []
+                mp2.setattr(kdb, 'AddTask', lambda *args, **kwargs: add_task_called.append(args))
+                
+                valid_statuses = ["To-Do", "In Progress", "Waiting Review", "Finished"]
+                for status in valid_statuses:
+                    result = board.AddTask(
+                        Title=f"Task with status {status}",
+                        Status=status,
+                        PersonInCharge=9876543210,
+                        DueDate="2024-12-31",
+                        Creator=1234567890,
+                        AdditionalInfo="Test"
+                    )
+                    assert result is True
+                
+                # Should have called AddTask 4 times
+                assert len(add_task_called) == 4
+            
+            # Test AddTask with invalid status
+            with pytest.MonkeyPatch.context() as mp2:
+                add_task_called = []
+                mp2.setattr(kdb, 'AddTask', lambda *args, **kwargs: add_task_called.append(args))
+                
+                result = board.AddTask(
+                    Title="Task with invalid status",
+                    Status="Invalid Status",
+                    PersonInCharge=9876543210,
+                    DueDate="2024-12-31",
+                    Creator=1234567890,
+                    AdditionalInfo="Should fail"
+                )
+                
+                assert result is False
+                assert len(add_task_called) == 0  # Should not call kdb.AddTask
+            
+            # Test EditTask with status validation
+            # First get a real task ID
+            all_tasks = kdb.GetAllTasks()
+            if all_tasks:
+                task_id = all_tasks[0][0]
+                
+                with pytest.MonkeyPatch.context() as mp2:
+                    edit_task_called = []
+                    mp2.setattr(kdb, 'EditTask', lambda *args, **kwargs: edit_task_called.append(args))
+                    
+                    # Test with valid status
+                    result = board.EditTask(
+                        index=task_id,
+                        Editor=1234567890,
+                        NewStatus="In Progress"  # Valid status
+                    )
+                    assert result is True
+                    assert len(edit_task_called) == 1
+                    
+                    # Test with invalid status
+                    edit_task_called.clear()
+                    result = board.EditTask(
+                        index=task_id,
+                        Editor=1234567890,
+                        NewStatus="Invalid Status"
+                    )
+                    assert result is False
+                    assert len(edit_task_called) == 0  # Should not call kdb.EditTask
+    
+    def test_kanbanboard_displayboard_integration(self, sample_tasks):
+        """Test DisplayBoard method integration with kdb."""
+        temp_db, Database, kdb = sample_tasks
+        
+        import DataStructures
+        
+        # Create KanbanBoard
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(kdb, 'InitDB', lambda: None)
+            board = DataStructures.KanbanBoard()
+            
+            # Mock kdb.GetAllTasks to return test data
+            test_tasks = [
+                (1, "Task 1", "To-Do", 9876543210, "2024-01-01 10:00:00", "2024-12-31", 1234567890, None, "Info 1"),
+                (2, "Task 2", "In Progress", 9876543210, "2024-01-01 10:00:00", "2024-12-25", 1234567890, None, "Info 2"),
+                (3, "Task 3", "Waiting Review", 1111111111, "2024-01-01 10:00:00", "2024-12-20", 1234567890, None, "Info 3"),
+            ]
+            
+            mp.setattr(kdb, 'GetAllTasks', lambda: test_tasks)
+            mp.setattr(kdb, 'GetUserByPhone', lambda phone: ["Test User"])
+            
+            # Capture output
+            import io
+            import sys
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            
+            try:
+                board.DisplayBoard()
+                output = sys.stdout.getvalue()
+                
+                # Check that board displays correctly
+                assert "Kanban Board" in output
+                assert "Task 1" in output
+                assert "Task 2" in output
+                assert "Task 3" in output
+                
+                # Should group by status
+                assert "TO-DO:" in output.upper() or "TO-DO" in output.upper()
+                assert "IN PROGRESS:" in output.upper() or "IN PROGRESS" in output.upper()
+                assert "WAITING REVIEW:" in output.upper() or "WAITING REVIEW" in output.upper()
+                
+            finally:
+                sys.stdout = old_stdout
+    
+    def test_complete_task_lifecycle_integration(self, setup_database_schema):
+        """Test complete task lifecycle using both DataStructures and kdb."""
+        temp_db, Database, kdb = setup_database_schema
+        
+        import DataStructures
+        
+        # Create users first
+        Database.CreateUser(1111111111, "Task Creator", "User", "pass")
+        Database.ChangeActivationStatus(1111111111, 1)
+        Database.CreateUser(2222222222, "Task Assignee", "User", "pass")
+        Database.ChangeActivationStatus(2222222222, 1)
+        
+        # Create KanbanBoard
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(kdb, 'InitDB', lambda: None)
+            board = DataStructures.KanbanBoard()
+            
+            # 1. Add a task
+            add_result = board.AddTask(
+                Title="Lifecycle Test Task",
+                Status="To-Do",
+                PersonInCharge=2222222222,
+                DueDate="2024-12-31",
+                Creator=1111111111,
+                AdditionalInfo="Testing full lifecycle"
+            )
+            
+            assert add_result is True
+            
+            # 2. Get the task to get its ID
+            all_tasks = kdb.GetAllTasks()
+            assert len(all_tasks) == 1
+            
+            task_id = all_tasks[0][0]
+            
+            # 3. Edit the task
+            edit_result = board.EditTask(
+                index=task_id,
+                Editor=1111111111,
+                NewTitle="Updated Lifecycle Task",
+                NewStatus="In Progress",
+                NewPersonInCharge=1111111111,  # Reassign to creator
+                NewDueDate="2024-11-30",
+                NewAdditionalInfo="Updated during lifecycle test"
+            )
+            
+            assert edit_result is True
+            
+            # 4. Verify edits
+            updated_task = kdb.GetTaskByID(task_id)
+            assert updated_task[1] == "Updated Lifecycle Task"
+            assert updated_task[2] == "In Progress"
+            assert updated_task[3] == 1111111111
+            assert updated_task[5] == "2024-11-30"
+            assert updated_task[8] == "Updated during lifecycle test"
+            
+            # 5. Delete the task
+            delete_result = board.DelTask(task_id)
+            assert delete_result is True
+            
+            # 6. Verify deletion
+            deleted_task = kdb.GetTaskByID(task_id)
+            assert deleted_task is None
+            
+            # 7. DisplayBoard should show no tasks
+            # Mock kdb.GetAllTasks to return empty list
+            mp.setattr(kdb, 'GetAllTasks', lambda: [])
+            mp.setattr(kdb, 'GetUserByPhone', lambda phone: ["Test User"])
+            
+            import io
+            import sys
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            
+            try:
+                board.DisplayBoard()
+                output = sys.stdout.getvalue()
+                # Board should display but with no tasks
+                assert "Kanban Board" in output
+            finally:
+                sys.stdout = old_stdout
+    
+    def test_error_handling_integration(self, setup_database_schema):
+        """Test error handling between DataStructures and kdb."""
+        temp_db, Database, kdb = setup_database_schema
+        
+        import DataStructures
+        
+        # Create KanbanBoard
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(kdb, 'InitDB', lambda: None)
+            board = DataStructures.KanbanBoard()
+            
+            # Test editing non-existent task
+            edit_result = board.EditTask(
+                index=99999,  # Non-existent ID
+                Editor=1234567890,
+                NewTitle="Should not work"
+            )
+            
+            assert edit_result is False
+            
+            # Test deleting non-existent task
+            delete_result = board.DelTask(99999)
+            assert delete_result is False
+            
+            # Test getting non-existent task
+            # This is handled in kdb.GetTaskByID which returns None
+            non_existent = kdb.GetTaskByID(99999)
+            assert non_existent is None
+    
+    def test_task_sorting_by_due_date(self, sample_tasks):
+        """Test that DisplayBoard sorts tasks by due date."""
+        temp_db, Database, kdb = sample_tasks
+        
+        import DataStructures
+        
+        # Create KanbanBoard
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(kdb, 'InitDB', lambda: None)
+            board = DataStructures.KanbanBoard()
+            
+            # Create tasks with different due dates
+            test_tasks = [
+                (1, "Task Late", "To-Do", 9876543210, "2024-01-01 10:00:00", "2024-12-31", 1234567890, None, "Latest"),
+                (2, "Task Early", "To-Do", 9876543210, "2024-01-01 10:00:00", "2024-12-01", 1234567890, None, "Earliest"),
+                (3, "Task Middle", "To-Do", 9876543210, "2024-01-01 10:00:00", "2024-12-15", 1234567890, None, "Middle"),
+            ]
+            
+            mp.setattr(kdb, 'GetAllTasks', lambda: test_tasks)
+            mp.setattr(kdb, 'GetUserByPhone', lambda phone: ["Test User"])
+            
+            # Capture output
+            import io
+            import sys
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            
+            try:
+                board.DisplayBoard()
+                output = sys.stdout.getvalue()
+                
+                # Check all tasks are displayed
+                assert "Task Late" in output
+                assert "Task Early" in output
+                assert "Task Middle" in output
+                
+                # The board should attempt to sort by due date
+                # We can't easily test the sort order in output, but we can verify
+                # that the function doesn't crash
+                
+            finally:
+                sys.stdout = old_stdout
+EOF
+
+pytest tests/integration/test_business_logic_data_layer.py -v
+
+cat > tests/conftest.py << 'EOF'
+import pytest
+import sqlite3
+import tempfile
+import os
+import sys
+from datetime import datetime
+import bcrypt
+from unittest.mock import Mock, patch, MagicMock
+
+# Add project root to Python path
+sys.path.insert(0, os.path.abspath('.'))
+
+@pytest.fixture
+def temp_db():
+    """Create a temporary SQLite database for integration testing."""
+    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+        db_path = f.name
+    
+    # Create the database file
+    conn = sqlite3.connect(db_path)
+    conn.close()
+    
+    yield db_path
+    
+    # Cleanup
+    if os.path.exists(db_path):
+        os.unlink(db_path)
+
+@pytest.fixture
+def setup_auth_database(temp_db):
+    """Set up the complete database schema for authentication tests."""
+    # Import Database and KanbanInfoDatabase modules
+    import Database
+    import KanbanInfoDatabase as kdb
+    
+    # Set the database path for both modules
+    original_db_path = Database.DB_PATH
+    original_kdb_path = kdb.DB_PATH
+    
+    Database.DB_PATH = temp_db
+    kdb.DB_PATH = temp_db
+    
+    # Initialize both databases
+    Database.InitDB()
+    kdb.InitDB()
+    
+    yield temp_db, Database, kdb
+    
+    # Restore original paths
+    Database.DB_PATH = original_db_path
+    kdb.DB_PATH = original_kdb_path
+
+@pytest.fixture
+def sample_users(setup_auth_database):
+    """Create sample users for authentication testing."""
+    temp_db, Database, kdb = setup_auth_database
+    
+    # Create test users
+    test_users = [
+        {
+            'phone': 1234567890,
+            'name': 'Admin User',
+            'position': 'Admin',
+            'password': 'AdminPass123',
+            'active': 1
+        },
+        {
+            'phone': 9876543210,
+            'name': 'Regular User',
+            'position': 'User',
+            'password': 'UserPass123',
+            'active': 1
+        },
+        {
+            'phone': 5555555555,
+            'name': 'Inactive User',
+            'position': 'User',
+            'password': 'InactivePass123',
+            'active': 0
+        },
+        {
+            'phone': 1111111111,
+            'name': 'Test User 1',
+            'position': 'User',
+            'password': 'TestPass123',
+            'active': 1
+        },
+    ]
+    
+    for user in test_users:
+        try:
+            Database.CreateUser(user['phone'], user['name'], user['position'], user['password'])
+            if user['active'] == 0:
+                Database.ChangeActivationStatus(user['phone'], 0)
+        except ValueError:
+            pass  # User might already exist
+    
+    return temp_db, Database, kdb, test_users
+
+@pytest.fixture
+def mock_cli_input():
+    """Fixture to mock CLI input functions."""
+    with patch('CLI.input') as mock_input:
+        yield mock_input
+
+@pytest.fixture
+def mock_cli_print():
+    """Fixture to capture CLI print output."""
+    with patch('CLI.print') as mock_print:
+        yield mock_print
+EOF
+
+cat > tests/integration/test_cli_database.py << 'EOF'
+"""
+Integration tests for CLI + Database
+Tests: CLI.py + kdb.py + Database.py
+Test Points from Image:
+1. Input validation with real user checks
+"""
+import pytest
+import sys
+import os
+from unittest.mock import patch, Mock, MagicMock, call
+
+sys.path.insert(0, os.path.abspath('.'))
+
+class TestCLIDatabaseInputValidation:
+    """Test input validation with real user checks."""
+    
+    def test_handle_person_in_charge_input_real_user_check(self, sample_users):
+        """Test HandlePersonInChargeInput with real user checks."""
+        temp_db, Database, kdb, users = sample_users
+        
+        # Import CLI module
+        import CLI
+        
+        # Test with existing user
+        test_user = users[1]  # Regular active user
+        test_phone = test_user['phone']
+        test_name = test_user['name']
+        
+        # Mock input to return the test phone number
+        with patch('builtins.input', return_value=str(test_phone)):
+            # Mock print to capture output
+            with patch('builtins.print'):
+                # Call HandlePersonInChargeInput
+                result = CLI.HandlePersonInChargeInput(Mandatory=True)
+                
+                # Should return the phone number as integer
+                assert result == test_phone
+        
+        # Test with non-existent user
+        non_existent_phone = 9990009990
+        
+        # Mock input sequence: non-existent user, then existent user
+        input_sequence = [str(non_existent_phone), str(test_phone)]
+        with patch('builtins.input', side_effect=input_sequence):
+            with patch('builtins.print'):
+                result = CLI.HandlePersonInChargeInput(Mandatory=True)
+                
+                # Should eventually return the valid phone number
+                assert result == test_phone
+        
+        # Test with empty input when not mandatory
+        with patch('builtins.input', return_value=""):
+            result = CLI.HandlePersonInChargeInput(Mandatory=False, DefaultResponse="Undecided")
+            
+            # Should return default
+            assert result == "Undecided"
+    
+    def test_handle_creator_input_real_user_check(self, sample_users):
+        """Test HandleCreatorInput with real user checks."""
+        temp_db, Database, kdb, users = sample_users
+        
+        import CLI
+        
+        test_user = users[1]  # Regular active user
+        test_phone = test_user['phone']
+        
+        with patch('builtins.input', return_value=str(test_phone)):
+            with patch('builtins.print'):
+                result = CLI.HandleCreatorInput(Mandatory=True)
+                
+                assert result == test_phone
+    
+    def test_handle_editor_input_real_user_check(self, sample_users):
+        """Test HandleEditorInput with real user checks."""
+        temp_db, Database, kdb, users = sample_users
+        
+        import CLI
+        
+        test_user = users[0]  # Admin user
+        test_phone = test_user['phone']
+        
+        with patch('builtins.input', return_value=str(test_phone)):
+            with patch('builtins.print'):
+                result = CLI.HandleEditorInput(Mandatory=True)
+                
+                assert result == test_phone
+    
+    def test_cli_input_validation_invalid_user_retry(self, sample_users, capsys):
+        """Test that CLI input validation retries on invalid user."""
+        temp_db, Database, kdb, users = sample_users
+        
+        import CLI
+        
+        test_user = users[1]  # Regular active user
+        test_phone = test_user['phone']
+        non_existent_phone = 9990009990
+        
+        # Mock input: invalid user twice, then valid user
+        input_sequence = [str(non_existent_phone), str(non_existent_phone), str(test_phone)]
+        
+        with patch('builtins.input', side_effect=input_sequence):
+            result = CLI.HandlePersonInChargeInput(Mandatory=True)
+            
+            # Should return the valid phone number
+            assert result == test_phone
+            
+            # Check error messages were printed
+            captured = capsys.readouterr()
+            assert "Person in charge does not exist" in captured.out
+    
+    def test_cli_input_validation_invalid_phone_format(self, sample_users, capsys):
+        """Test CLI input validation with invalid phone format."""
+        temp_db, Database, kdb, users = sample_users
+        
+        import CLI
+        
+        test_user = users[1]
+        test_phone = test_user['phone']
+        
+        # Mock input: non-numeric, then valid
+        input_sequence = ["not-a-number", str(test_phone)]
+        
+        with patch('builtins.input', side_effect=input_sequence):
+            result = CLI.HandlePersonInChargeInput(Mandatory=True)
+            
+            assert result == test_phone
+            
+            # Check error message
+            captured = capsys.readouterr()
+            assert "Please enter a valid phone number" in captured.out
+    
+    def test_cli_input_validation_empty_when_mandatory(self, sample_users, capsys):
+        """Test CLI input validation with empty input when mandatory."""
+        temp_db, Database, kdb, users = sample_users
+        
+        import CLI
+        
+        test_user = users[1]
+        test_phone = test_user['phone']
+        
+        # Mock input: empty, then valid
+        input_sequence = ["", str(test_phone)]
+        
+        with patch('builtins.input', side_effect=input_sequence):
+            result = CLI.HandlePersonInChargeInput(Mandatory=True)
+            
+            assert result == test_phone
+            
+            # Check error message
+            captured = capsys.readouterr()
+            assert "Person in charge cannot be empty" in captured.out
+    
+    def test_cli_user_lookup_display(self, sample_users, capsys):
+        """Test that CLI displays user name after successful validation."""
+        temp_db, Database, kdb, users = sample_users
+        
+        import CLI
+        
+        test_user = users[1]
+        test_phone = test_user['phone']
+        test_name = test_user['name']
+        
+        with patch('builtins.input', return_value=str(test_phone)):
+            result = CLI.HandlePersonInChargeInput(Mandatory=True)
+            
+            assert result == test_phone
+            
+            # Check that user name was displayed
+            captured = capsys.readouterr()
+            assert test_name in captured.out
+
+class TestCLIDatabaseTaskOperations:
+    """Test CLI task operations with real database checks."""
+    
+    def test_cli_task_operations_user_validation(self, sample_users):
+        """Test that CLI task operations validate users against database."""
+        temp_db, Database, kdb, users = sample_users
+        
+        # We need to test the actual CLI interactive_menu function
+        # This is more complex, so we'll test the integration points
+        
+        # First, let's test that kdb.CheckUserExist is called during input validation
+        import CLI
+        
+        test_user = users[1]
+        test_phone = test_user['phone']
+        
+        # Mock the kdb module to track calls
+        with patch('CLI.kdb.CheckUserExist') as mock_check_user:
+            mock_check_user.return_value = True
+            
+            with patch('CLI.kdb.GetUserByPhone') as mock_get_user:
+                mock_get_user.return_value = [test_user['name']]
+                
+                with patch('builtins.input', return_value=str(test_phone)):
+                    with patch('builtins.print'):
+                        result = CLI.HandlePersonInChargeInput(Mandatory=True)
+                        
+                        # Verify kdb.CheckUserExist was called
+                        mock_check_user.assert_called_with(test_phone)
+                        
+                        # Verify kdb.GetUserByPhone was called
+                        mock_get_user.assert_called_with(test_phone)
+
+
+
+EOF
+
+pytest tests/integration/test_cli_database.py -v
