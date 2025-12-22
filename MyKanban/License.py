@@ -1,6 +1,6 @@
 from pathlib import Path
 
-LICENSE_FILE = Path("license_keys.txt")
+LICENSE_FILE = Path("MyKanban/license_keys.txt")
 
 def LicenseInput() -> bool:
     Trial = 3
