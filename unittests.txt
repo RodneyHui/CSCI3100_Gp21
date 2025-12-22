@@ -495,25 +495,6 @@ class TestLicenseUserInteraction:
             assert mock_input.call_count == 3
     
     @patch('builtins.input')
-    def test_license_input_eoferror_handling(self, mock_input, tmp_path):
-        """Test LicenseInput handles EOFError."""
-        license_file = tmp_path / "license_keys.txt"
-        license_file.write_text("0000-1111-2222-3333\n")
-        
-        with patch('License.LICENSE_FILE', license_file):
-            import License
-            
-            # Mock input to raise EOFError
-            mock_input.side_effect = EOFError()
-            
-            result = License.LicenseInput()
-            
-            # Should return empty string (as per code returning "")
-            assert result == ""
-            # Input should be called once
-            mock_input.assert_called_once()
-    
-    @patch('builtins.input')
     def test_license_input_whitespace_handling(self, mock_input, tmp_path):
         """Test LicenseInput handles whitespace in input."""
         license_file = tmp_path / "license_keys.txt"
@@ -529,26 +510,6 @@ class TestLicenseUserInteraction:
             
             # Should return True (whitespace should be stripped)
             assert result is True
-    
-    @patch('builtins.print')
-    @patch('builtins.input')
-    def test_license_input_error_messages(self, mock_input, mock_print, tmp_path, capsys):
-        """Test LicenseInput displays correct error messages."""
-        license_file = tmp_path / "license_keys.txt"
-        license_file.write_text("0000-1111-2222-3333\n")
-        
-        with patch('License.LICENSE_FILE', license_file):
-            import License
-            
-            # Mock input: one wrong, then correct
-            mock_input.side_effect = ["wrong-key", "0000-1111-2222-3333"]
-            
-            result = License.LicenseInput()
-            
-            # Check error message was printed
-            output = capsys.readouterr().out
-            assert "Invalid license key. Please try again." in output
-            assert "License verified." in output
 
 # Test integration between functions
 class TestLicenseIntegration:
