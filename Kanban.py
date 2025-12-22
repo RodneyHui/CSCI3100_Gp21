@@ -1,5 +1,5 @@
-import Login
-import License
+from MyKanban import Login
+from MyKanban import License
 
 def main(argv=None):
         

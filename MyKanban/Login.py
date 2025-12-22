@@ -1,7 +1,7 @@
-import Database
-import CLI
-import Notification
-import KanbanInfoDatabase as kdb
+from . import Database
+from . import CLI
+from . import Notification
+from . import KanbanInfoDatabase as kdb
 
 LOGIN_PAGE = """
 Kanban System Login Page

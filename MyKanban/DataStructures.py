@@ -1,5 +1,5 @@
 from datetime import datetime as dt
-import KanbanInfoDatabase as kdb
+from . import KanbanInfoDatabase as kdb
 
 class Task:
     def __init__(self, Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo, CreationDate=None, Editors=None, ID=None):

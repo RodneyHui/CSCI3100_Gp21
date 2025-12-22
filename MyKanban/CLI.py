@@ -1,7 +1,7 @@
-import DataStructures
+from . import DataStructures
 from pathlib import Path
-import Database
-import KanbanInfoDatabase as kdb
+from . import Database
+from . import KanbanInfoDatabase as kdb
 from datetime import datetime
 
 MENU_SCREENS = """
@@ -63,7 +63,7 @@ def interactive_menu(store: str):
                 continue
             Status = HandleStatusInput(Mandatory=True)
             PersonInCharge = HandlePersonInChargeInput(Mandatory=False, DefaultResponse="Undecided")
-            DueDate = HandleDueDateInput(DefaultResponse="Undecided", Mandatory=False)
+            DueDate = HandleDueDateInput(DefaultResponse="Undecided", Mandatory=False, AllowPastDate=True)
             Creator = HandleCreatorInput(Mandatory=True, DefaultResponse="Unknown")
             AdditionalInfo = input("Additional information: ").strip()
             board.AddTask(Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo)
@@ -297,7 +297,7 @@ def HandleStatusInput(Mandatory=True, AdditionalText=""):
         except ValueError:
             print("Please enter a valid number.")
 
-def HandleDueDateInput(Mandatory=True, DefaultResponse=None):
+def HandleDueDateInput(Mandatory=True, DefaultResponse=None, AllowPastDate=False):
     #Todo: Add validation for real calendar date?
     Today = datetime.today().date()
     while True:
@@ -312,6 +312,8 @@ def HandleDueDateInput(Mandatory=True, DefaultResponse=None):
                     year, month, day = map(int, parts)
                     DueDate = datetime(year, month, day).date()
                     if DueDate >= Today:
+                        return DueDateInput
+                    elif AllowPastDate:
                         return DueDateInput
                     else:
                         print("Date has already passed.")

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-import KanbanInfoDatabase as kdb
+from . import KanbanInfoDatabase as kdb
 import sqlite3
 from pathlib import Path
 
