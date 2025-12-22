@@ -911,8 +911,6 @@ class TestMandatoryOptionalHandling:
         mock_input.side_effect = ["", "1"]
         result = CLI.HandleStatusInput(Mandatory=True)
         assert result == "To-Do"
-    
-
 EOF
 
 pytest tests/unit/test_cli.py -v
