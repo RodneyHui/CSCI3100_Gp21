@@ -62,9 +62,9 @@ def interactive_menu(store: str):
                 print("Title cannot be empty.")
                 continue
             Status = HandleStatusInput(Mandatory=True)
-            PersonInCharge = HandlePersonInChargeInput(Mandatory=False, DefaultResponse="Undecided")
+            PersonInCharge = HandlePersonInChargeInput(Mandatory=False, DefaultResponse="Undecided", AdditionalText="(blank to skip)")
             DueDate = HandleDueDateInput(DefaultResponse="Undecided", Mandatory=False, AllowPastDate=True)
-            Creator = HandleCreatorInput(Mandatory=True, DefaultResponse="Unknown")
+            Creator = HandleCreatorInput(Mandatory=True, DefaultResponse="Unknown", AdditionalText="(blank to skip)")
             AdditionalInfo = input("Additional information: ").strip()
             board.AddTask(Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo)
 
@@ -90,8 +90,8 @@ def interactive_menu(store: str):
             Editor = HandleEditorInput(Mandatory=True)
             Title = input("New title (blank to skip): ").strip() or None
             Status = HandleStatusInput(AdditionalText="Blank: Skip", Mandatory=False)
-            PersonInCharge = HandlePersonInChargeInput(Mandatory=False, DefaultResponse=None)
-            DueDate = HandleDueDateInput(DefaultResponse=None, Mandatory=False)
+            PersonInCharge = HandlePersonInChargeInput(Mandatory=False, DefaultResponse=None, AdditionalText="(blank to skip)")
+            DueDate = HandleDueDateInput(DefaultResponse=None, Mandatory=False, AdditionalText="(blank to skip)")
             AdditionalInfo = input("New additional information (blank to skip): ").strip() or None
             board.EditTask(TaskID, Editor, NewTitle=Title, NewStatus=Status, NewPersonInCharge=PersonInCharge, NewDueDate=DueDate, NewAdditionalInfo=AdditionalInfo)
 
@@ -211,10 +211,12 @@ def InteractiveMenuAdmin(store: str):
         else:
             print("Invalid choice. Please enter a number from the menu.")
 
-def HandlePersonInChargeInput(Mandatory=True, DefaultResponse="Undecided"):
+def HandlePersonInChargeInput(Mandatory=True, DefaultResponse="Undecided", AdditionalText=""):
     while True:
+        if AdditionalText != "":
+            AdditionalText = " " + AdditionalText
         try:
-            PersonInCharge = input("Person in charge: ").strip() or None
+            PersonInCharge = input(f"Person in charge (Phone number){AdditionalText}: ").strip() or None
             if not PersonInCharge and not Mandatory:
                 PersonInCharge = DefaultResponse
                 return PersonInCharge
@@ -231,10 +233,12 @@ def HandlePersonInChargeInput(Mandatory=True, DefaultResponse="Undecided"):
     print(f"Person in charge: {kdb.GetUserByPhone(PersonInCharge)}")
     return PersonInCharge
 
-def HandleCreatorInput(Mandatory=True, DefaultResponse="Unknown"):
+def HandleCreatorInput(Mandatory=True, DefaultResponse="Unknown", AdditionalText=""):
     while True:
+        if AdditionalText != "":
+            AdditionalText = " " + AdditionalText
         try:
-            Creator = input("Creator: ").strip() or None
+            Creator = input(f"Creator (Phone number){AdditionalText}: ").strip() or None
             if not Creator and not Mandatory:
                 Creator = DefaultResponse
                 return Creator
@@ -252,10 +256,12 @@ def HandleCreatorInput(Mandatory=True, DefaultResponse="Unknown"):
     print(f"Creator: {kdb.GetUserByPhone(Creator)}")
     return Creator
 
-def HandleEditorInput(Mandatory=True, DefaultResponse="Unknown"):
+def HandleEditorInput(Mandatory=True, DefaultResponse="Unknown", AdditionalText=""):
     while True:
+        if AdditionalText != "":
+            AdditionalText = " " + AdditionalText
         try:
-            Editor = input("Editor: ").strip() or None
+            Editor = input(f"Editor (Phone number){AdditionalText}: ").strip() or None
             if not Editor and not Mandatory:
                 Editor = DefaultResponse
                 return Editor
@@ -268,7 +274,8 @@ def HandleEditorInput(Mandatory=True, DefaultResponse="Unknown"):
             continue
         if kdb.CheckUserExist(Editor):
             break
-        print("Editor does not exist.")
+        elif Editor:
+            print("Editor does not exist.")
     print(f"Editor: {kdb.GetUserByPhone(Editor)}")
     return Editor
 
@@ -297,11 +304,12 @@ def HandleStatusInput(Mandatory=True, AdditionalText=""):
         except ValueError:
             print("Please enter a valid number.")
 
-def HandleDueDateInput(Mandatory=True, DefaultResponse=None, AllowPastDate=False):
-    #Todo: Add validation for real calendar date?
+def HandleDueDateInput(Mandatory=True, DefaultResponse=None, AllowPastDate=False, AdditionalText=""):
     Today = datetime.today().date()
     while True:
-        DueDateInput = input("Due date (YYYY-MM-DD): ").strip() or None
+        if AdditionalText != "":
+            AdditionalText = " " + AdditionalText
+        DueDateInput = input(f"Due date (YYYY-MM-DD){AdditionalText}: ").strip() or None
         if DueDateInput:
             parts = DueDateInput.split("-")
             if (len(parts) == 3 and
