@@ -64,8 +64,8 @@ def interactive_menu(store: str):
             Status = HandleStatusInput(Mandatory=True)
             PersonInCharge = HandlePersonInChargeInput(Mandatory=False, DefaultResponse="Undecided", AdditionalText="(blank to skip)")
             DueDate = HandleDueDateInput(DefaultResponse="Undecided", Mandatory=False, AllowPastDate=True)
-            Creator = HandleCreatorInput(Mandatory=True, DefaultResponse="Unknown", AdditionalText="(blank to skip)")
-            AdditionalInfo = input("Additional information: ").strip()
+            Creator = HandleCreatorInput(Mandatory=True, DefaultResponse="Unknown")
+            AdditionalInfo = input("Additional information (blank to skip): ").strip()
             board.AddTask(Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo)
 
         elif choice == "3":
@@ -304,7 +304,7 @@ def HandleStatusInput(Mandatory=True, AdditionalText=""):
         except ValueError:
             print("Please enter a valid number.")
 
-def HandleDueDateInput(Mandatory=True, DefaultResponse=None, AllowPastDate=False, AdditionalText=""):
+def HandleDueDateInput(Mandatory=True, DefaultResponse=None, AllowPastDate=False, AdditionalText="(blank to skip)"):
     Today = datetime.today().date()
     while True:
         if AdditionalText != "":
