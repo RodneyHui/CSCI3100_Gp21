@@ -63,7 +63,7 @@ def interactive_menu(store: str):
                 continue
             Status = HandleStatusInput(Mandatory=True)
             PersonInCharge = HandlePersonInChargeInput(Mandatory=False, DefaultResponse="Undecided", AdditionalText="(blank to skip)")
-            DueDate = HandleDueDateInput(DefaultResponse="Undecided", Mandatory=False, AllowPastDate=True)
+            DueDate = HandleDueDateInput(DefaultResponse="Undecided", Mandatory=False, AllowPastDate=False)
             Creator = HandleCreatorInput(Mandatory=True, DefaultResponse="Unknown")
             AdditionalInfo = input("Additional information (blank to skip): ").strip()
             board.AddTask(Title, Status, PersonInCharge, DueDate, Creator, AdditionalInfo)
